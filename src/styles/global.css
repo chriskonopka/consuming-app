@@ -1,0 +1,148 @@
+/*
+ * Global design tokens for the MWS UI Toolkit (consuming app).
+ * Mirrors the indexer's web-branding.md so the embedded indexer's themed
+ * surfaces and the consuming app's chrome share one visual language.
+ *
+ * All component styles must reference var(--token) — never hardcoded hex.
+ */
+
+:root {
+  /* === Colour palette (raw — used to compose semantic tokens below) === */
+  --color-navy: #000042;
+  --color-blue: #0018f2;
+  --color-white: #ffffff;
+  --color-magenta: #f48dff;
+  --color-orange: #fc561d;
+  --color-gold: #e5ac2e;
+  --color-teal: #00e2c1;
+  --color-neon: #d2ff3e;
+
+  --color-pale-gold: #f9e9d2;
+  --color-pale-magenta: #ffedff;
+  --color-pale-orange: #ffe2de;
+  --color-pale-blue: #e2e8ff;
+
+  --color-navy-gray-1: #ebebf2;
+  --color-navy-gray-2: #dedee5;
+  --color-navy-gray-3: #d2d2d9;
+
+  --color-error: #ff3333;
+  --color-success: #75d957;
+  --color-warning: #f1e53c;
+
+  /* === Typography === */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mix: Georgia, 'Times New Roman', serif;
+  --font-serif: Georgia, serif;
+
+  --font-size-base: 16px;
+
+  /* === Layout === */
+  --sidebar-w: 260px;
+  --control-h: 40px;
+  --radius: 2px;
+  --transition: 0.2s ease;
+}
+
+/* === Light theme (default) === */
+:root,
+[data-theme='light'] {
+  --bg-page: #f7f7fc;
+  --bg-surface: #ffffff;
+  --bg-sidebar: var(--color-navy);
+  --text-primary: var(--color-navy);
+  --text-secondary: #4a4a6a;
+  --accent-interactive: var(--color-blue);
+  --icon-default: var(--color-navy);
+  --border-light: var(--color-navy-gray-2);
+}
+
+/* === Dark theme === */
+[data-theme='dark'] {
+  --bg-page: #13134e;
+  --bg-surface: #1c1c66;
+  --bg-sidebar: #0d0d46;
+  --text-primary: var(--color-white);
+  --text-secondary: #b8b8d4;
+  --accent-interactive: var(--color-teal);
+  --icon-default: var(--color-teal);
+  --border-light: #2c2c80;
+}
+
+/* === Reset === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* === Base === */
+html {
+  font-size: var(--font-size-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* === Resets that benefit every component === */
+ul,
+ol {
+  list-style: none;
+}
+
+button {
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* === Accessibility === */
+
+/* Visible focus ring on every keyboard-focusable element. */
+:focus-visible {
+  outline: 2px solid var(--accent-interactive);
+  outline-offset: 2px;
+}
+
+/* Skip-to-main link — slice 1 places one in the app shell. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  left: 0;
+  top: 0;
+  padding: 0.5rem 1rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  z-index: 9999;
+}
+
+/* Respect reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
