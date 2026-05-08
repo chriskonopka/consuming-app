@@ -12,6 +12,10 @@ const config: Config = {
     '\\.(jpg|jpeg|png|gif|svg|webp|avif|ico|woff2?|ttf|eot)$':
       '<rootDir>/src/__mocks__/fileMock.ts',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
+    // Federation remote — resolved at runtime via webpack ModuleFederationPlugin.
+    // Jest tests use a local stand-in that mimics the contract surface.
+    '^mws_indexer/IndexerApp$': '<rootDir>/src/__mocks__/mws_indexer.tsx',
+    '^mws_indexer/types$': '<rootDir>/src/__mocks__/mws_indexer.tsx',
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
 

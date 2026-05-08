@@ -5,6 +5,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const { ModuleFederationPlugin } = require('@module-federation/enhanced/webpack');
 
 /** @param {Record<string, unknown>} _env @param {{ mode: string }} argv */
 module.exports = (_env, argv) => {
@@ -121,6 +122,27 @@ module.exports = (_env, argv) => {
     },
 
     plugins: [
+      // Module Federation host. Loads `mws_indexer/IndexerApp` and
+      // `mws_indexer/types` from the deployed indexer remote at runtime.
+      // The URL is read from `INDEXER_REMOTE_URL` (base URL — webpack appends
+      // /remoteEntry.js per REQUIREMENTS.md §2.2).
+      //
+      // shared singletons match the indexer's declarations
+      // (reusable-indexer/web/webpack.config.js — react, react-dom,
+      // react-dom/client). MSAL is deliberately NOT in shared — the indexer
+      // doesn't depend on MSAL; the host owns auth.
+      new ModuleFederationPlugin({
+        name: 'consuming_app',
+        remotes: {
+          mws_indexer: `mws_indexer@${process.env.INDEXER_REMOTE_URL || 'http://localhost:3001'}/remoteEntry.js`,
+        },
+        shared: {
+          react: { singleton: true, requiredVersion: false, eager: false },
+          'react-dom': { singleton: true, requiredVersion: false, eager: false },
+          'react-dom/client': { singleton: true, requiredVersion: false, eager: false },
+        },
+      }),
+
       // Injects the bundled scripts into index.html automatically.
       new HtmlWebpackPlugin({ template: './index.html' }),
 

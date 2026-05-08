@@ -1,12 +1,16 @@
 /**
- * What belongs here: returns the currently-active collection (from
- * `collection/activated` indexer events) so other modules can scope to it.
- *
- * Scaffolded — implementation lands in slice 2.
+ * Returns the currently-active collection (driven by `collection/activated`
+ * indexer events) so other modules can scope to it. `null` when no
+ * collection is active or the IndexerHost isn't mounted.
  */
+
+import { useContext } from 'react';
 
 import type { ActiveCollection } from '@shared/types';
 
+import { IndexerHostContext } from './IndexerHostContext';
+
 export const useActiveCollection = (): ActiveCollection | null => {
-  return null;
+  const context = useContext(IndexerHostContext);
+  return context?.activeCollection ?? null;
 };

@@ -13,11 +13,11 @@ import { Route, Routes } from 'react-router-dom';
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthGate } from '../auth/AuthGate';
+import { IndexerHost } from '../features/indexer-host';
 import { HealthPage } from '../health';
 import { useTrackPageView } from '../telemetry/useTrackPageView';
 
 import { HeaderBar } from './HeaderBar';
-import { CollectionPlaceholder } from './CollectionPlaceholder';
 import styles from './AppShell.module.css';
 
 export const AppShell = () => {
@@ -30,11 +30,8 @@ export const AppShell = () => {
           <HeaderBar />
           <main className={styles.main} id="main">
             <Routes>
-              <Route path="/" element={<HealthPage />} />
-              <Route
-                path="/c/:documentSetId"
-                element={<CollectionPlaceholder />}
-              />
+              <Route path="/" element={<IndexerHost />} />
+              <Route path="/c/:documentSetId" element={<IndexerHost />} />
               <Route path="*" element={<HealthPage />} />
             </Routes>
           </main>
