@@ -1,11 +1,13 @@
 /**
- * What belongs here: returns the current theme + a setter that updates the
- * DOM attribute and persists to localStorage.
- *
- * Scaffolded — implementation lands in slice 1.
+ * Returns the current theme + a setter that updates the DOM attribute and
+ * persists to localStorage.
  */
 
+import { useContext } from 'react';
+
 import type { Theme } from '@shared/types';
+
+import { ThemeContext } from './ThemeProvider';
 
 interface UseThemeReturn {
   theme: Theme;
@@ -13,10 +15,9 @@ interface UseThemeReturn {
 }
 
 export const useTheme = (): UseThemeReturn => {
-  return {
-    theme: 'light',
-    setTheme: () => {
-      // slice 1
-    },
-  };
+  const value = useContext(ThemeContext);
+  if (!value) {
+    throw new Error('useTheme must be used within <ThemeProvider>.');
+  }
+  return value;
 };

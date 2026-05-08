@@ -1,13 +1,28 @@
 /**
  * MF async-boundary mount. Imported asynchronously by main.tsx.
- * Slices 1+ wrap <AppShell /> with provider chains (MsalProvider,
- * QueryClientProvider, ThemeProvider, BrowserRouter) here.
+ *
+ * Slice 1 wires the full provider chain:
+ *   <ErrorBoundary>            outermost — catches anything in init
+ *     <MsalAppProvider>        MSAL singleton + initialization
+ *       <BrowserRouter>        react-router-dom
+ *         <ThemeProvider>      light/dark toggle context
+ *           <AuthGate>         sign-in screen if unauthenticated
+ *             <AppShell>       chrome + routes
+ *
+ * Slice 2 adds <ModuleFederationPlugin> to the webpack config and lazy-loads
+ * the indexer remote inside <IndexerHost />. The async-boundary pattern in
+ * main.tsx is already in place — slice 2 doesn't have to refactor entry.
  */
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { BrowserRouter } from 'react-router-dom';
+
 import { AppShell } from './app-shell';
+import { MsalAppProvider } from './auth/MsalAppProvider';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ThemeProvider } from './theme/ThemeProvider';
 import './styles/global.css';
 
 const rootElement = document.getElementById('root');
@@ -18,6 +33,14 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AppShell />
+    <ErrorBoundary>
+      <MsalAppProvider>
+        <BrowserRouter>
+          <ThemeProvider>
+            <AppShell />
+          </ThemeProvider>
+        </BrowserRouter>
+      </MsalAppProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

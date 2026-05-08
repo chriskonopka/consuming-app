@@ -17,9 +17,12 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.10.0",
+    "@azure/msal-react": "^5.4.0",
     "@microsoft/applicationinsights-web": "^3.3.8",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.15.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

@@ -1,18 +1,42 @@
 /**
- * What belongs here: MSAL `PublicClientApplication` configuration and the
- * React provider that exposes it. Wraps `@azure/msal-react`'s `MsalProvider`
- * with our preconfigured instance built from `src/config/env.ts`.
+ * MSAL provider wrapper. Exposes the singleton PublicClientApplication via
+ * `@azure/msal-react`'s `MsalProvider` so children can call `useMsal()`,
+ * `useAccount()`, etc.
  *
- * Scaffolded — implementation lands in slice 1 (App shell + Auth + Telemetry).
+ * Initialization is awaited once at module load (initializeMsal). Children
+ * render immediately — useAuth() reflects whichever state MSAL is in.
  */
 
-import { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+import { MsalProvider } from '@azure/msal-react';
+
+import { initializeMsal, msalInstance } from './msalConfig';
 
 interface Props {
   children: ReactNode;
 }
 
 export const MsalAppProvider = ({ children }: Props) => {
-  // Slice 1 wraps children in <MsalProvider instance={msalInstance}>.
-  return <>{children}</>;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void initializeMsal().finally(() => {
+      if (!cancelled) setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!ready) {
+    return (
+      <div role="status" aria-live="polite" aria-label="Initializing authentication">
+        Loading…
+      </div>
+    );
+  }
+
+  return <MsalProvider instance={msalInstance}>{children}</MsalProvider>;
 };

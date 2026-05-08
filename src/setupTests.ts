@@ -3,6 +3,17 @@ import { toHaveNoViolations } from 'jest-axe';
 import { randomUUID } from 'crypto';
 import { serialize, deserialize } from 'v8';
 import { IDBFactory } from 'fake-indexeddb';
+import { TextEncoder, TextDecoder } from 'util';
+
+// jsdom does not expose TextEncoder/TextDecoder. react-router v7 (and other
+// modern packages) require them at module-evaluation time.
+if (typeof globalThis.TextEncoder === 'undefined') {
+  (globalThis as { TextEncoder: typeof TextEncoder }).TextEncoder = TextEncoder;
+}
+if (typeof globalThis.TextDecoder === 'undefined') {
+  (globalThis as { TextDecoder: typeof TextDecoder }).TextDecoder =
+    TextDecoder as unknown as typeof globalThis.TextDecoder;
+}
 
 // Register the jest-axe matcher globally so every component test can call
 // `expect(results).toHaveNoViolations()` without re-registering per file.
