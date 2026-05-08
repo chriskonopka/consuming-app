@@ -1,23 +1,20 @@
 /**
- * Chat session, streaming, and model-picker types — owned by features/chat.
+ * Chat session and streaming types — owned by features/chat.
+ *
+ * v1 sends `llmProvider: 'Claude'` on every chat message (REQUIREMENTS.md §4.9).
+ * The API's Claude path resolves to Claude Opus 4.7 server-side. The model
+ * picker UI is deferred (REQUIREMENTS.md §10) — no `ModelPickerOption` type
+ * needed until that comes back into scope.
  */
 
 import type { CitationData, LlmProvider, MessageResponse } from './api-dtos';
 
-// =============================================================================
-// Model picker
-// =============================================================================
-
 /**
- * UI label for the model picker. Maps to `LlmProvider` on send.
- * "Quick" is reserved for v2 — see REQUIREMENTS.md §10.
+ * The single hardcoded provider sent on every `POST .../messages` body in v1.
+ * Imported by `useSseChat()` so the constant lives in one place; replace with
+ * a runtime selection when the model picker comes back into scope.
  */
-export type ModelPickerOption = 'Balanced' | 'Powerful';
-
-export const MODEL_PICKER_TO_PROVIDER: Record<ModelPickerOption, LlmProvider> = {
-  Balanced: 'Claude',
-  Powerful: 'OpenAi',
-};
+export const V1_CHAT_LLM_PROVIDER: LlmProvider = 'Claude';
 
 // =============================================================================
 // Status row simulator
@@ -58,7 +55,6 @@ export interface ChatSession {
   documentSetId: string;
   /** Null until first send creates a conversation. */
   conversationId: string | null;
-  modelPicker: ModelPickerOption;
   /** Non-null only while a response is in flight. */
   streaming: StreamingState | null;
   /** Composer textarea value — not persisted. */

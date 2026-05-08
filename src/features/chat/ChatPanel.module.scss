@@ -1,0 +1,108 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  gap: 0.5rem;
+  background: var(--bg-surface);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.title {
+  font-family: var(--font-mix);
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clearButton {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.clearButton:hover:not(:disabled),
+.clearButton:focus-visible:not(:disabled) {
+  border-color: var(--color-error);
+  color: var(--color-error);
+  outline: none;
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-page);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.errorState {
+  padding: 1rem;
+  margin: 1rem;
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius);
+  color: var(--color-navy);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--bg-surface));
+}
+
+.errorNotice {
+  margin: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--color-navy);
+  background: color-mix(in srgb, var(--color-error) 18%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--bg-surface));
+  font-size: 0.875rem;
+}
+
+.resizeEdge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+@media (max-width: 767px) {
+  .resizeEdge {
+    display: none;
+  }
+}

@@ -1,0 +1,23 @@
+.splitter {
+  background: var(--border-light);
+  transition: background var(--transition);
+  flex: 0 0 auto;
+}
+
+.splitter:hover,
+.splitter:focus-visible {
+  background: var(--accent-interactive);
+  outline: none;
+}
+
+.horizontal {
+  width: 4px;
+  cursor: col-resize;
+  align-self: stretch;
+}
+
+.vertical {
+  height: 4px;
+  cursor: row-resize;
+  align-self: stretch;
+}

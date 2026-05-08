@@ -1,0 +1,85 @@
+.wrapper {
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: var(--transition);
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  border-color: var(--border-light);
+  background: var(--bg-surface);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  /* Per web-branding.md, teal background pairs with navy text — both
+     themes use the same combination (canonical primary-button pairing). */
+  background: var(--color-teal);
+  color: var(--color-navy);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  min-width: 220px;
+  padding: 0.5rem 0;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-navy) 12%, transparent);
+  z-index: 10;
+}
+
+.identity {
+  padding: 0.5rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.identityName {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.identityUsername {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 0.125rem;
+  word-break: break-all;
+}
+
+.signOut {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  padding: 0.625rem 1rem;
+  transition: var(--transition);
+}
+
+.signOut:hover,
+.signOut:focus-visible {
+  background: var(--bg-page);
+  color: var(--accent-interactive);
+}

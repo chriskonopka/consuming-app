@@ -100,7 +100,6 @@ export type { IndexerHostState };
 - Conversation lifecycle (resolve existing on activate, lazy-create on first send, delete on Clear)
 - SSE streaming client (`useSseChat()` hook wrapping fetch + ReadableStream + AbortController)
 - Status row simulator (5-phase + fallback cycle)
-- Model picker (Balanced/Powerful → llmProvider mapping)
 - TanStack Query keys for conversations + history
 - Message rendering (delegates citation `[N]` rendering to `citations/`)
 

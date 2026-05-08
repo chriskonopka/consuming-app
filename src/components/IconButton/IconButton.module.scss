@@ -1,0 +1,58 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--icon-default);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible:not(:disabled) {
+  border-color: var(--accent-interactive);
+  color: var(--accent-interactive);
+  outline: none;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toneDefault {
+  color: var(--icon-default);
+}
+
+.tonePrimary {
+  background: var(--color-teal);
+  color: var(--color-navy);
+  border-color: var(--color-teal);
+}
+
+.tonePrimary:hover:not(:disabled),
+.tonePrimary:focus-visible:not(:disabled) {
+  background: var(--color-navy);
+  color: var(--color-white);
+  border-color: var(--color-navy);
+}
+
+.toneDanger {
+  color: var(--color-error);
+}
+
+.toneDanger:hover:not(:disabled),
+.toneDanger:focus-visible:not(:disabled) {
+  border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.button[aria-pressed='true'] {
+  background: var(--accent-interactive);
+  color: var(--color-white);
+  border-color: var(--accent-interactive);
+}

@@ -1,24 +1,55 @@
 /**
- * What belongs here: Phosphor icon wrapper with consistent sizing + a11y
- * label. `aria-label` is mandatory.
- *
- * Scaffolded — implementation lands in slice 3.
+ * Phosphor icon wrapper with consistent sizing + a11y label. `aria-label` is
+ * mandatory. Tone selects from the design-token palette (no raw colours).
  */
 
-import type { ComponentType } from 'react';
+import type { ComponentType, MouseEventHandler } from 'react';
+
+import styles from './IconButton.module.scss';
+
+type Tone = 'default' | 'primary' | 'danger';
 
 interface Props {
   icon: ComponentType<{ size?: number; weight?: 'regular' | 'bold' }>;
   ariaLabel: string;
-  onClick: () => void;
+  onClick: MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
-  tone?: 'default' | 'primary' | 'danger';
+  tone?: Tone;
+  type?: 'button' | 'submit';
+  ariaPressed?: boolean;
+  ariaExpanded?: boolean;
+  ariaControls?: string;
 }
 
-export const IconButton = ({ icon: Icon, ariaLabel, onClick, disabled }: Props) => {
+const TONE_CLASS: Record<Tone, string> = {
+  default: styles.toneDefault,
+  primary: styles.tonePrimary,
+  danger: styles.toneDanger,
+};
+
+export const IconButton = ({
+  icon: Icon,
+  ariaLabel,
+  onClick,
+  disabled,
+  tone = 'default',
+  type = 'button',
+  ariaPressed,
+  ariaExpanded,
+  ariaControls,
+}: Props) => {
   return (
-    <button type="button" aria-label={ariaLabel} onClick={onClick} disabled={disabled}>
-      <Icon size={24} weight="regular" />
+    <button
+      type={type}
+      className={`${styles.button} ${TONE_CLASS[tone]}`}
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <Icon size={20} weight="regular" />
     </button>
   );
 };

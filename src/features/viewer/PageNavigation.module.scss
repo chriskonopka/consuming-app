@@ -1,0 +1,51 @@
+.nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.input {
+  width: 4rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  font: inherit;
+  text-align: center;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--accent-interactive);
+  outline-offset: 1px;
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.total {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  min-width: 4ch;
+  text-align: left;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

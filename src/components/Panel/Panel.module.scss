@@ -1,0 +1,49 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-navy) 30%, transparent);
+  z-index: 100;
+}
+
+.panel {
+  position: fixed;
+  top: 56px;
+  bottom: 0;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-navy) 25%, transparent);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  transition: transform var(--transition);
+}
+
+.panel:focus-visible {
+  outline: 2px solid var(--accent-interactive);
+  outline-offset: -2px;
+}
+
+.left {
+  left: 0;
+  border-right: 1px solid var(--border-light);
+}
+
+.right {
+  right: 0;
+  border-left: 1px solid var(--border-light);
+}
+
+@media (max-width: 767px) {
+  .panel {
+    width: 100% !important;
+    top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
+}

@@ -31,12 +31,14 @@ Cross-cutting utilities, shared UI primitives, and infra helpers. Every entry be
 ### `useAbortable`
 - **Interface:** `<T>(asyncFn: (signal: AbortSignal) => Promise<T>, deps: DependencyList): { run: () => void; abort: () => void; status: 'idle' | 'pending' | 'success' | 'error'; data: T | null; error: Error | null }`
 - **Location:** `/src/hooks/useAbortable.ts`
-- **Behavior:** Wraps an async fn with an AbortController; aborts on unmount or dep change.
+- **Status:** implemented (slice 3)
+- **Behavior:** Wraps an async fn with an AbortController; aborts on unmount or dep change. Treats `DOMException(AbortError)` as a clean abort (status returns to `idle`, no error surfaced).
 - **Consumers:** chat (SSE streaming)
 
 ### `useDebouncedValue`
 - **Interface:** `<T>(value: T, ms: number): T`
 - **Location:** `/src/hooks/useDebouncedValue.ts`
+- **Status:** implemented (slice 3)
 - **Consumers:** chat (status row fallback timing), viewer (page navigation input)
 
 ### `useUrlState`
@@ -48,7 +50,8 @@ Cross-cutting utilities, shared UI primitives, and infra helpers. Every entry be
 ### `parseSse`
 - **Interface:** `(stream: ReadableStream<Uint8Array>, signal: AbortSignal): AsyncIterable<{ event: string; data: string }>`
 - **Location:** `/src/utils/parseSse.ts`
-- **Behavior:** Reads the stream, splits on `\n\n` event boundaries, yields each event with name + raw data string. Caller parses `data` as JSON.
+- **Status:** implemented (slice 3)
+- **Behavior:** Reads the stream, splits on `\r?\n\r?\n` event boundaries, yields each event with name + raw data string. Multi-line `data:` fields join with `\n` per the EventSource spec; comment lines (`:`) are ignored; default event name is `'message'`. Caller parses `data` as JSON. Cancels the reader when the supplied `AbortSignal` aborts.
 - **Consumers:** chat (SSE streaming)
 
 ### `problemDetails`
@@ -78,15 +81,17 @@ Cross-cutting utilities, shared UI primitives, and infra helpers. Every entry be
 ## Shared UI primitives
 
 ### `<Splitter>`
-- **Interface:** `{ direction: 'horizontal' | 'vertical'; widthPx: number; minPx: number; maxPx: number; onResize: (px: number) => void; ariaLabel: string; children: ReactNode }`
+- **Interface:** `{ direction: 'horizontal' | 'vertical'; resizeFrom?: 'left' | 'right'; widthPx: number; minPx: number; maxPx: number; onResize: (px: number) => void; ariaLabel: string }`
 - **Location:** `/src/components/Splitter/`
-- **Behavior:** Draggable divider. Pointer events for dragging; ArrowLeft/ArrowRight or ArrowUp/ArrowDown for keyboard resize. `aria-orientation` and `role="separator"`. Respects `min`/`max` bounds.
-- **Consumers:** app-shell (chat panel + viewer panel)
+- **Status:** implemented (slice 3)
+- **Behavior:** Draggable divider. Pointer events for dragging (with capture); ArrowLeft/ArrowRight, ArrowUp/ArrowDown, Home, End for keyboard resize (10px steps; Home/End jump to min/max). `aria-orientation`, `aria-valuenow`/`min`/`max`, and `role="separator"` for assistive-tech announcement. Width clamped to `[minPx, maxPx]` regardless of input source. `resizeFrom` controls drag-direction sign (default `left`; the chat panel uses `left`, the viewer panel will use `right`).
+- **Consumers:** chat (slice 3), viewer (slice 4)
 
 ### `<Panel>`
-- **Interface:** `{ side: 'left' | 'right'; open: boolean; widthPx: number; onClose: () => void; ariaLabel: string; children: ReactNode }`
+- **Interface:** `{ side: 'left' | 'right'; open: boolean; widthPx: number; onClose: () => void; ariaLabel: string; id?: string; children: ReactNode }`
 - **Location:** `/src/components/Panel/`
-- **Behavior:** Slide-in panel base. Focus trap, focus restore on close, Escape closes, backdrop on mobile. Honors `prefers-reduced-motion` (no slide animation).
+- **Status:** implemented (slice 3)
+- **Behavior:** Slide-in panel base. Focus trap (Tab cycles through focusable descendants), focus restore on close, Escape closes, backdrop click closes, `prefers-reduced-motion` honored (no slide animation). The optional `id` prop enables triggers to use `aria-controls`.
 - **Consumers:** chat (`<ChatPanel>`), viewer (`<DocumentViewer>`)
 
 ### `<Tooltip>`
@@ -99,19 +104,21 @@ Cross-cutting utilities, shared UI primitives, and infra helpers. Every entry be
 - **Interface:** `{ label: string; tone: 'neutral' | 'info' | 'success' | 'warning' | 'error'; ariaLabel?: string; truncated?: boolean }`
 - **Location:** `/src/components/Pill/`
 - **Behavior:** Color + text label (color-blind safe, per `web-accessibility.md`). Tooltip-on-hover when `truncated`.
-- **Consumers:** chat (model picker selection display), citations (source list doc-type pill — deferred), viewer header (file type)
+- **Consumers:** citations (source list doc-type pill — deferred), viewer header (file type). (Removed: chat model-picker display — picker deferred per REQUIREMENTS.md §4.9.)
 
 ### `<IconButton>`
-- **Interface:** `{ icon: PhosphorIconType; ariaLabel: string; onClick: () => void; disabled?: boolean; tone?: 'default' | 'primary' | 'danger' }`
+- **Interface:** `{ icon: PhosphorIconType; ariaLabel: string; onClick: () => void; disabled?: boolean; tone?: 'default' | 'primary' | 'danger'; type?: 'button' | 'submit'; ariaPressed?: boolean; ariaExpanded?: boolean; ariaControls?: string }`
 - **Location:** `/src/components/IconButton/`
-- **Behavior:** Phosphor regular-weight icon, 24×24 area, navy/teal per theme. Visible focus ring. `aria-label` mandatory.
+- **Status:** implemented (slice 3)
+- **Behavior:** Phosphor regular-weight icon (20×20 inside a 40×40 button area), navy/teal per theme. Visible focus ring. `aria-label` mandatory. Toggle/expand semantics supported via `aria-pressed`/`aria-expanded`/`aria-controls` for triggers like the chat-panel toggle.
 - **Consumers:** every feature
 
 ### `<LoadingSpinner>`
 - **Interface:** `{ ariaLabel: string; size?: 'small' | 'medium' | 'large' }`
 - **Location:** `/src/components/LoadingSpinner/`
-- **Behavior:** Branded spinner with `aria-live="polite"` for screen readers.
-- **Consumers:** chat (Suspense fallback while indexer loads, status row), viewer (page render state)
+- **Status:** implemented (slice 3)
+- **Behavior:** Branded ring spinner with `role="status" aria-live="polite"` and a visually-hidden text label so screen readers announce loading. Honors `prefers-reduced-motion` (no spin animation).
+- **Consumers:** chat (Suspense fallback while indexer loads, Composer slot), viewer (page render state — slice 4)
 
 ---
 

@@ -86,7 +86,7 @@ All requests carry `Authorization: Bearer <token>` from `getAccessToken()`. All 
 Implementation rules (binding):
 - `fetch` + `ReadableStream` reader, never `EventSource` (no `POST` / custom headers / `Authorization` support).
 - `Content-Type: application/json`, `Accept: text/event-stream`.
-- Body: `{ content: string, llmProvider: 'Claude' | 'OpenAi' }`. `content` capped at 64 KB (server-enforced).
+- Body: `{ content: string, llmProvider: 'Claude' }`. `content` capped at 64 KB (server-enforced). v1 always sends `llmProvider: 'Claude'` — see REQUIREMENTS.md §4.9. The API's Claude path resolves to Claude Opus 4.7 server-side. The `'OpenAi'` value remains valid in the API contract but is not used by v1; switching to a picker is a future-slice change (REQUIREMENTS.md §10).
 - `AbortController` cancels mid-stream cleanly — server treats abort as cancellation, not failure.
 - Pre-stream errors: parse as ProblemDetails, render `detail` as user-visible message.
 - `error` event mid-stream: render non-blocking notice, do not retry.

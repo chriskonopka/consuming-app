@@ -14,7 +14,10 @@ import { act } from '@testing-library/react';
  */
 export const flushIDB = async () => {
   // Phase 1: let IDB operations complete outside React's act() boundary.
-  await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  // Coverage-instrumented runs are slower than bare runs; the timeout has to
+  // be long enough for fake-indexeddb's setImmediate-driven open/transaction
+  // pipeline to fully drain before we re-enter React.
+  await new Promise<void>((resolve) => setTimeout(resolve, 150));
   // Phase 2: flush any React state updates that resulted from IDB callbacks.
   await act(async () => {});
 };

@@ -15,12 +15,15 @@ export interface LayoutState {
   theme: Theme;
 }
 
-/** IndexedDB persistence keys — stable, namespaced. */
-export const PERSISTENCE_KEYS = {
-  chatPanelWidth: 'consuming-app:chat-panel-width',
-  viewerPanelWidth: 'consuming-app:viewer-panel-width',
-  chatPanelOpen: 'consuming-app:chat-panel-open',
-} as const;
+/**
+ * IndexedDB persistence key for the consolidated LayoutState reducer.
+ *
+ * Slice 1 stores the entire LayoutState under one key rather than the three
+ * per-field keys originally sketched in data-model.md §3. One reducer, one
+ * write, atomic rehydration. See `docs/architecture/data-model.md` §3 for
+ * the rationale.
+ */
+export const LAYOUT_STORAGE_KEY = 'consuming-app:layout' as const;
 
 /** localStorage key — the only sanctioned one per web-persistence.md. */
 export const THEME_PREFERENCE_KEY = 'theme-preference';

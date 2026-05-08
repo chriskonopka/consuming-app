@@ -35,6 +35,7 @@ The slices below are ordered by build dependency. Each one ships a real capabili
   - Tests: MSAL flow (mocked), theme toggle persists, axe across light + dark + sign-in screen + signed-in shell
   - E2E: sign in → see shell → toggle theme → reload → theme persists → sign out
 - **Estimated LoC:** ~2,000
+- Status: completed
 
 ## Slice 2: Indexer host integration
 
@@ -52,22 +53,24 @@ The slices below are ordered by build dependency. Each one ships a real capabili
   - Tests: event router (each event type → reducer assertion), URL state push/parse, axe over indexer-loaded shell + Suspense fallback
   - E2E: deep-link to `/c/<known-id>` → indexer mounts at that collection; click another collection in indexer → URL updates; back-button restores
 - **Estimated LoC:** ~1,500
+- Status: completed
 
 ## Slice 3: Chat panel + SSE streaming
 
-- **Spec sections:** REQUIREMENTS.md §4.1–4.7, §4.9 (model picker)
-- **User capability:** *"User opens the chat panel in the active collection, asks a question, sees the answer stream in token-by-token, and can clear the conversation. Switching collections away and back restores the conversation. Model picker persists within session."*
+- **Spec sections:** REQUIREMENTS.md §4.1–4.7 (§4.9 is single-model-only in v1 — see deferred list)
+- **User capability:** *"User opens the chat panel in the active collection, asks a question, sees the answer stream in token-by-token, and can clear the conversation. Switching collections away and back restores the conversation."*
 - **Scope:**
   - Add deps: `@tanstack/react-query`, `@phosphor-icons/react`
   - Wrap app in `<QueryClientProvider>`
   - `src/components/Panel/`, `src/components/IconButton/`, `src/components/LoadingSpinner/`, `src/components/Pill/`, `src/components/Splitter/` (all the shared UI primitives chat needs; viewer reuses next slice)
-  - `src/features/chat/`: `<ChatPanel>`, composer, message list (citation markers stubbed — real impl in slice 4), conversation lifecycle hooks (`useConversation`, `useChatHistory`), `useSseChat()`, status row simulator with fallback cycle, model picker dropdown, "Clear" confirm dialog
+  - `src/features/chat/`: `<ChatPanel>`, composer, message list (citation markers stubbed — real impl in slice 4), conversation lifecycle hooks (`useConversation`, `useChatHistory`), `useSseChat()` (sends `llmProvider: 'Claude'` hardcoded — picker deferred per REQUIREMENTS.md §4.9), status row simulator with fallback cycle, "Clear" confirm dialog
   - `src/utils/parseSse.ts`
   - `src/hooks/useAbortable.ts`, `src/hooks/useDebouncedValue.ts`
   - Plug `<ChatPanel>` into `<AppShell>` left panel slot; wire splitter persistence
-  - Tests: conversation resolution (existing → load history; none → lazy create on send), SSE happy path (mock fetch with ReadableStream of token + error events), abort cancels cleanly, status row phase transitions, model picker persists within session, axe over chat panel in every state (empty, history-loaded, streaming, error, model dropdown open, clear-confirm dialog open)
+  - Tests: conversation resolution (existing → load history; none → lazy create on send), SSE happy path (mock fetch with ReadableStream of token + error events), abort cancels cleanly, status row phase transitions, send-body assertion (`llmProvider: 'Claude'` always), axe over chat panel in every state (empty, history-loaded, streaming, error, clear-confirm dialog open)
   - E2E: open chat → send a message → tokens stream → reach completion → clear → conversation resets; switch collections → chat re-scopes
 - **Estimated LoC:** ~3,500
+- Status: completed
 
 ## Slice 4: Citations + Document viewer (PDFs)
 
@@ -85,6 +88,7 @@ The slices below are ordered by build dependency. Each one ships a real capabili
   - Tests: pdf.js mock + render, citation rect overlay positioning at multiple render scales, drift guard at exactly 25% / 24.9% / 25.1% page-height fractions, missing-coords audit (`{x:0,y:0,w:0,h:0}` → strike-through), source-list group/dedupe, axe over viewer in loading/rendered/drift-guard-fired/no-highlight states
   - E2E: ask a question that returns a citation → click `[1]` → viewer opens at the cited page → highlight visible → close viewer → click source-list item → viewer reopens
 - **Estimated LoC:** ~3,500
+- Status: completed
 
 ## Slice 5: Image viewer + read-only behavior + responsive layout polish
 
@@ -123,7 +127,7 @@ These are **not** standalone slices — each one is enforced inside the touching
 - Conversation list UI
 - Doc-type pills / section headings in source list
 - Theme override props sent to indexer
-- Persisting model picker selection across sessions
+- Model picker UI (v1 hardcodes `llmProvider: 'Claude'` → Claude Opus 4.7 server-side; persisting a picker selection is meaningless until the picker exists)
 - Mobile platform support beyond what indexer covers
 - A toast/notification system (inline error states only in v1)
 
@@ -153,7 +157,7 @@ If any of these come back into scope, they're a new slice — they do not get re
 | §4.6 Follow-ups | — | deferred |
 | §4.7 Chat history | 3 | |
 | §4.8 Source list | 4 | (real source list with citation linkage) |
-| §4.9 Model picker | 3 | |
+| §4.9 Model selection | 3 (single-model: hardcoded `llmProvider: 'Claude'`) | picker UI deferred — see deferred list |
 | §5.1 Inline citations | 4 | (slice 3 stubs them) |
 | §5.2 Citation audit | 4 | |
 | §5.3 Where viewer opens | 4, 5 | (PDFs in 4, indexer document/selected in 4, image opens in 5) |

@@ -12,6 +12,10 @@ Locked artifacts for the consuming app. Read in this order on first arrival; the
 | [`shared-inventory.md`](shared-inventory.md) | Shared utilities, primitives, and infra helpers + scaffold status |
 | [`slice-plan.md`](slice-plan.md) | Locked slice plan — count, ceiling, drift cap, mapping back to spec |
 | [`scaffold-notes.md`](scaffold-notes.md) | Decisions and divergences surfaced during `/build-scaffold` |
+| [`01-slice-app-shell-auth-telemetry.md`](01-slice-app-shell-auth-telemetry.md) | Slice 1 — sign-in via Entra ID, themed app shell, persistence plumbing |
+| [`02-slice-indexer-host-integration.md`](02-slice-indexer-host-integration.md) | Slice 2 — Module Federation host, indexer mount + event router, URL deep-link, useApiClient + useUrlState |
+| [`03-slice-chat-panel-sse-streaming.md`](03-slice-chat-panel-sse-streaming.md) | Slice 3 — chat panel, SSE streaming, conversation lifecycle, status-row simulator, shared UI primitives |
+| [`04-slice-citations-pdf-viewer.md`](04-slice-citations-pdf-viewer.md) | Slice 4 — citations + PDF viewer, drift guard, source list, viewer panel wiring |
 
 ## Source spec
 

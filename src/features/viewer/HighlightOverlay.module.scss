@@ -1,0 +1,9 @@
+.overlay {
+  position: absolute;
+  // REQUIREMENTS.md §5.6 — soft yellow overlay so the underlying text remains
+  // legible. Mixed via color-mix to avoid hardcoded rgba per web-styling.md.
+  background: color-mix(in srgb, var(--color-warning) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 80%, transparent);
+  border-radius: var(--radius);
+  pointer-events: none;
+}

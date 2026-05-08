@@ -55,7 +55,6 @@ interface IndexerHostState {
 interface ChatSession {
   documentSetId: string;
   conversationId: string | null;        // null until first send creates one
-  modelPicker: 'Balanced' | 'Powerful'; // maps to llmProvider in §4.9 of REQUIREMENTS.md
   streaming: StreamingState | null;
   composerText: string;
 }
@@ -73,7 +72,7 @@ type StreamingState = {
 - One `ChatSession` per `(activeCollection)` — instantiated on `collection/activated`.
 - `conversationId` resolved from `POST /conversations/list` page 1, lazy-created on first send.
 - `streaming` is non-null only while a response is in flight.
-- Persistence: `composerText` not persisted (transient). `modelPicker` not persisted across sessions in v1 (per REQUIREMENTS.md §10).
+- Persistence: `composerText` not persisted (transient). No `modelPicker` field in v1 — `llmProvider: 'Claude'` is hardcoded on send (REQUIREMENTS.md §4.9, §10).
 
 ### 2.4 `ViewerState` — owner: `viewer/`
 
@@ -110,7 +109,7 @@ interface LayoutState {
 }
 ```
 
-- `chatPanel.widthPx`, `viewerPanel.widthPx`, `chatPanel.open` → IndexedDB via `usePersistedReducer` (per `web-persistence.md`).
+- The whole `LayoutState` minus `viewerPanel.open` (which resets each session — see invariant 4) → IndexedDB via `usePersistedReducer` under one consolidated key (`consuming-app:layout`). The transient field is filtered post-hydrate by `useLayoutState`. See web-persistence.md for the rationale on going through the hook rather than touching IDB directly.
 - `theme` → `localStorage.theme-preference` (the only sanctioned localStorage key).
 - `viewerPanel.open` → not persisted (transient on each session).
 
@@ -124,12 +123,12 @@ Carries `operationId` for correlation across API calls. Read from response `X-Op
 
 | Key | Storage | Owner | Lifetime |
 |---|---|---|---|
-| `theme-preference` | localStorage | app-shell | persistent |
-| `consuming-app:chat-panel-width` | IndexedDB (object store: `app-state`) | app-shell | persistent |
-| `consuming-app:viewer-panel-width` | IndexedDB | app-shell | persistent |
-| `consuming-app:chat-panel-open` | IndexedDB | app-shell | persistent |
+| `theme-preference` | localStorage | theme | persistent |
+| `consuming-app:layout` | IndexedDB (object store: `app-state`) | app-shell | persistent |
 | MSAL token cache | sessionStorage (MSAL-managed) | auth | session |
 | `mws-indexer:*` | IndexedDB / localStorage | indexer (off-limits to consuming app) | indexer-managed |
+
+**Why one consolidated layout key instead of three per-field keys** (slice 1 simplification): the originally-sketched `consuming-app:chat-panel-width` / `…viewer-panel-width` / `…chat-panel-open` fan-out gave three separate IDB writes per state mutation. Storing the LayoutState shape under one key is a single atomic write, a single read on hydrate, and matches the way `usePersistedReducer` is designed to be used. The const lives in `@shared/types/layout.ts` (`LAYOUT_STORAGE_KEY`).
 
 The consuming app **never** writes to keys outside `consuming-app:*` and `theme-preference`.
 

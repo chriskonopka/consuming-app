@@ -9,7 +9,15 @@ import globals from 'globals';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'coverage/**',
+      // Agent-spawned worktrees live under .claude/worktrees/. They are
+      // independent checkouts of the repo and must not be linted from the
+      // main tree.
+      '.claude/worktrees/**',
+    ],
   },
   js.configs.recommended,
   {

@@ -15,4 +15,4 @@ Citation highlights run through the drift guard (`driftGuard` in `@shared/types/
 
 ## Status
 
-Scaffolded — PDF rendering + drift guard land in slice 4. Image rendering, "Preview not available" fallback, and responsive polish land in slice 5.
+PDF rendering + drift guard implemented in slice 4 — `<DocumentViewer>`, `viewerReducer`, `<ViewerProvider>` / `useViewer`, `usePdfDocument`, `usePdfPage`, `<HighlightOverlay>`, `<PageNavigation>`, `<ViewerHeader>`. Image rendering, "Preview not available" fallback, and responsive polish land in slice 5.

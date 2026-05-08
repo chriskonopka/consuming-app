@@ -1,0 +1,33 @@
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-surface);
+}
+
+.textarea {
+  flex: 1;
+  resize: none;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  transition: border-color var(--transition);
+  min-height: var(--control-h);
+}
+
+.textarea:focus {
+  border-color: var(--accent-interactive);
+  outline: none;
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

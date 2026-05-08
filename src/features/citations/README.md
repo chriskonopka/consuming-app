@@ -12,4 +12,4 @@ Inline `[N]` markers, the source-list expander, and `useCitationClick()` — the
 
 ## Status
 
-Scaffolded — implementation lands in slice 4 (Citations + PDF viewer).
+Implemented in slice 4 — `<CitationMarker>`, `<SourceList>`, `useCitationClick`. Doc-type pills and section headings on source rows are deferred per REQUIREMENTS.md §10 (need a `GET /documents/{id}` round-trip).

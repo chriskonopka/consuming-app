@@ -1,0 +1,70 @@
+.wrapper {
+  margin-top: 0.5rem;
+  border-top: 1px dashed var(--border-light);
+  padding-top: 0.5rem;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  color: var(--accent-interactive);
+  border-color: var(--accent-interactive);
+  background: color-mix(in srgb, var(--accent-interactive) 8%, transparent);
+  outline: none;
+}
+
+.list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.item {
+  display: block;
+}
+
+.source {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.source:hover,
+.source:focus-visible {
+  background: color-mix(in srgb, var(--accent-interactive) 8%, transparent);
+  border-color: var(--accent-interactive);
+  outline: none;
+}
+
+.fileName {
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.pages {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}

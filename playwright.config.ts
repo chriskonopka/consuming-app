@@ -25,5 +25,16 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
+    // E2E build uses the deterministic MSAL stub from
+    // src/auth/msalInstance.e2eStub.ts. Dummy MSAL config values are
+    // required so the bundle compiles; the stub does not consume them.
+    env: {
+      MSAL_E2E_STUB: 'true',
+      MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
+      MSAL_AUTHORITY: 'https://login.microsoftonline.com/test',
+      MSAL_API_SCOPE: 'api://test/access',
+      API_BASE_URL: 'http://localhost:9999',
+      INDEXER_REMOTE_URL: 'http://localhost:9998',
+    },
   },
 });

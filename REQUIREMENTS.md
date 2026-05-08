@@ -263,16 +263,11 @@ Per original doc §4.2.6:
 - Each source row: file name, doc-type pill (deferred — needs `GET /documents/{id}` lookup; v1 shows just file name), section heading (not currently in `citation` payload — defer).
 - Click a source → open viewer at the first cited page for that file, and call `revealDocument(documentId)` on the indexer ref.
 
-### 4.9 Model picker
+### 4.9 Model selection — single model in v1
 
-Per original doc §6 acceptance ("Quick / Balanced / Powerful"), but mapped to the API's actual options:
+**v1 hardcodes `llmProvider: 'Claude'` on every `POST .../messages` body.** No picker UI. The API's Claude path currently resolves to **Claude Opus 4.7** server-side; v1 inherits that choice without exposing it to the user.
 
-| UI label | `llmProvider` value | Notes |
-|---|---|---|
-| Balanced | `Claude` | Default. |
-| Powerful | `OpenAi` | |
-
-**v1 ships only Balanced and Powerful.** The "Quick" option is deferred until the API exposes a third choice (or tier within a provider). Selection persists across messages within the session but does not persist across sessions in v1.
+The original doc's "Quick / Balanced / Powerful" three-tier picker (and the prior v1 plan to ship Balanced/Powerful as a two-option dropdown) is **deferred** until either (a) the API exposes model-level selection beyond `'Claude' | 'OpenAi'`, or (b) product confirms multiple providers should be user-selectable. Until then, the chat header has no model control. See §10.
 
 ---
 
@@ -482,7 +477,7 @@ Inherits the indexer's `web-testing.md` and `web-accessibility.md` standards:
 - Conversation lists exposed in UI (single auto-managed conversation per collection in v1).
 - Doc-type pills + section headings in the chat source list.
 - Theme override props sent to the indexer (use indexer defaults in v1).
-- Persisting model picker selection across sessions.
+- Model picker UI (single hardcoded `llmProvider: 'Claude'` → Claude Opus 4.7 in v1; persisting a picker selection only becomes relevant once the picker exists).
 - Office mobile platform support beyond what the indexer covers.
 
 ---

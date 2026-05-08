@@ -36,3 +36,7 @@ coverage
 
 # Commit gate unlock file
 .claude/.commit-allowed
+
+# Per-session worktrees (created by Agent isolation: "worktree"). They are
+# real git worktrees pointing at .git/worktrees/ — never commit them.
+.claude/worktrees/

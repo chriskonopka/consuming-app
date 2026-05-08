@@ -28,6 +28,14 @@ declare module '*.webp' {
   export default src;
 }
 
+// pdf.js worker — bundled by webpack 5's asset/resource rule (see
+// webpack.config.js); the import resolves to the emitted worker file URL.
+// In tests, jest's moduleNameMapper redirects this to a string stub.
+declare module 'pdfjs-dist/build/pdf.worker.min.mjs' {
+  const workerUrl: string;
+  export default workerUrl;
+}
+
 // Env vars exposed via webpack.DefinePlugin. Mirror what's whitelisted in
 // webpack.config.js's DefinePlugin block. Adding one here without adding it
 // to DefinePlugin (or vice versa) is a build error waiting to happen.

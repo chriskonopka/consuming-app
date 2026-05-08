@@ -1,0 +1,111 @@
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: auto;
+  background: var(--bg-page);
+  padding: 0.75rem;
+  outline: none;
+}
+
+.body:focus-visible {
+  outline: 2px solid var(--accent-interactive);
+  outline-offset: -2px;
+}
+
+.empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.loading {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.pageStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+.pageWrap {
+  position: relative;
+  background: var(--bg-surface);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-navy) 18%, transparent);
+}
+
+.canvas {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.textLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  // pdf.js styles its text-layer descendants inline; we don't override them.
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.highlightLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.banner,
+.bannerWarning,
+.bannerError {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.bannerWarning {
+  background: color-mix(in srgb, var(--color-warning) 25%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 50%, transparent);
+  color: var(--color-navy);
+}
+
+.bannerError {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+  color: var(--color-navy);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-surface);
+}
+
+.resizeEdge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  cursor: ew-resize;
+}

@@ -5,10 +5,27 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const { ModuleFederationPlugin } = require('@module-federation/enhanced/webpack');
+
+// Federation host name the indexer remote ships under.
+// Must match the indexer's `ModuleFederationPlugin({ name: 'mws_indexer' })`.
+// See ../reusable-indexer/web/webpack.config.js.
+const INDEXER_REMOTE_NAME = 'mws_indexer';
 
 /** @param {Record<string, unknown>} _env @param {{ mode: string }} argv */
 module.exports = (_env, argv) => {
   const isProd = argv.mode === 'production';
+
+  // Remote URL for the indexer. Empty in test/CI runs where the remote is not
+  // served — the consuming app's E2E stub branch (MSAL_E2E_STUB) skips the
+  // dynamic remote import in that case so the bundle still boots.
+  const indexerRemoteUrl = process.env.INDEXER_REMOTE_URL || '';
+  // The MF runtime expects the form `<name>@<remoteEntry-url>`. When the URL is
+  // empty (e.g. unit-test bundling), pass a placeholder that fails fast at
+  // runtime instead of at build time.
+  const indexerRemote = indexerRemoteUrl
+    ? `${INDEXER_REMOTE_NAME}@${indexerRemoteUrl}/remoteEntry.js`
+    : `${INDEXER_REMOTE_NAME}@http://localhost/__indexer-not-configured__/remoteEntry.js`;
 
   return {
     entry: './src/main.tsx',
@@ -34,6 +51,18 @@ module.exports = (_env, argv) => {
 
     module: {
       rules: [
+        // pdf.js worker — emit as a separate asset and surface its URL via the
+        // default import. Must come before the JS / SCSS rules so the file is
+        // not also processed by babel-loader. Slice 4: features/viewer/
+        // imports `pdfjs-dist/build/pdf.worker.min.mjs` for its URL only.
+        {
+          test: /pdfjs-dist[\\/]build[\\/]pdf\.worker(\.min)?\.mjs$/,
+          type: 'asset/resource',
+          generator: {
+            filename: isProd ? 'pdfjs/[name].[contenthash][ext]' : 'pdfjs/[name][ext]',
+          },
+        },
+
         // TypeScript / JSX — transpiled by Babel; type-checking is handled
         // separately by ForkTsCheckerWebpackPlugin in parallel.
         {
@@ -121,6 +150,23 @@ module.exports = (_env, argv) => {
     },
 
     plugins: [
+      // Module Federation host. Loads the indexer remote at runtime as
+      // `mws_indexer/IndexerApp` and `mws_indexer/types`. React + ReactDOM are
+      // shared as strict singletons so a single React copy runs across both
+      // bundles — required, because mismatched copies cause the "shared
+      // singleton" runtime error referenced in api-contracts.md §1.1.
+      new ModuleFederationPlugin({
+        name: 'consuming_app',
+        remotes: {
+          [INDEXER_REMOTE_NAME]: indexerRemote,
+        },
+        shared: {
+          react: { singleton: true, requiredVersion: false, eager: false },
+          'react-dom': { singleton: true, requiredVersion: false, eager: false },
+          'react-dom/client': { singleton: true, requiredVersion: false, eager: false },
+        },
+      }),
+
       // Injects the bundled scripts into index.html automatically.
       new HtmlWebpackPlugin({ template: './index.html' }),
 
@@ -141,6 +187,11 @@ module.exports = (_env, argv) => {
         'process.env.MSAL_CLIENT_ID': JSON.stringify(process.env.MSAL_CLIENT_ID || ''),
         'process.env.MSAL_AUTHORITY': JSON.stringify(process.env.MSAL_AUTHORITY || ''),
         'process.env.MSAL_API_SCOPE': JSON.stringify(process.env.MSAL_API_SCOPE || ''),
+        // E2E test seam: when set to 'true', src/auth/msalInstance.ts swaps in
+        // a deterministic stub. Production builds (no env var set) get the
+        // empty string, which makes the gating expression false at compile
+        // time and Terser eliminates the stub branch.
+        'process.env.MSAL_E2E_STUB': JSON.stringify(process.env.MSAL_E2E_STUB || ''),
       }),
 
       // Runs TypeScript type-checking in a separate worker so it does not
@@ -175,6 +226,12 @@ module.exports = (_env, argv) => {
                 name: 'vendor',
                 chunks: 'all',
               },
+              // Module Federation runtime in its own chunk.
+              mfRuntime: {
+                test: /[\\/]node_modules[\\/]@module-federation[\\/]/,
+                name: 'mf-runtime',
+                chunks: 'all',
+              },
             },
           },
         }
@@ -186,6 +243,9 @@ module.exports = (_env, argv) => {
       // Required for client-side routing (SPA fallback).
       historyApiFallback: true,
       open: false,
+      // The indexer remote runs on a different origin in dev (see
+      // `INDEXER_REMOTE_URL`). Browsers fetch `remoteEntry.js` over CORS, so
+      // the indexer dev server already returns Access-Control-Allow-Origin.
     },
 
     // Inline source maps in dev for fast rebuilds; disabled in production.

@@ -1,22 +1,16 @@
 /**
- * What belongs here: returns the current theme + a setter that updates the
- * DOM attribute and persists to localStorage.
- *
- * Scaffolded — implementation lands in slice 1.
+ * Returns the current theme + a setter that updates the DOM attribute and
+ * persists to localStorage. Must be called inside `<ThemeProvider>`.
  */
 
-import type { Theme } from '@shared/types';
+import { useContext } from 'react';
 
-interface UseThemeReturn {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-}
+import { ThemeContext } from './ThemeProvider';
 
-export const useTheme = (): UseThemeReturn => {
-  return {
-    theme: 'light',
-    setTheme: () => {
-      // slice 1
-    },
-  };
+export const useTheme = () => {
+  const value = useContext(ThemeContext);
+  if (!value) {
+    throw new Error('useTheme must be called inside <ThemeProvider>');
+  }
+  return value;
 };

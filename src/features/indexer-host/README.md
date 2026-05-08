@@ -12,6 +12,16 @@ Critical: every `IndexerEvent` type must have a handler. New event types added t
 - Any indexer-internal state (the indexer manages its own under `mws-indexer:` IndexedDB / localStorage namespace — off-limits to this app).
 - Modifications to `mws_indexer/types` — that contract is owned by the indexer project; coordinate before changing.
 
+## Files
+
+- `IndexerHost.tsx` — lazy `<IndexerApp>` mount + ErrorBoundary + Suspense + URL↔indexer reconciliation effect.
+- `IndexerHostContext.tsx` — Context that owns `IndexerHostState` + the imperative `IndexerHandle` ref.
+- `eventRouter.ts` — pure dispatcher for the five `IndexerEvent` types.
+- `indexerHostReducer.ts` — `IndexerHostState` reducer (collection mirror + remountKey counter).
+- `loadIndexerApp.ts` — picks between the federated remote and the E2E stub via `MSAL_E2E_STUB`.
+- `IndexerApp.e2eStub.tsx` — Playwright-only stub of `<IndexerApp>` (dead-code-eliminated in production).
+- `__mocks__/loadIndexerApp.ts` — jest manual mock that returns the stub.
+
 ## Status
 
-Scaffolded — implementation lands in slice 2 (Indexer host integration).
+Implemented in slice 2.

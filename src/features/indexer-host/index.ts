@@ -1,3 +1,5 @@
 export { IndexerHost } from './IndexerHost';
-export { useIndexerRef } from './useIndexerRef';
-export { useActiveCollection } from './useActiveCollection';
+export {
+  useActiveCollection,
+  useIndexerRef,
+} from './IndexerHostContext';

@@ -1,18 +1,21 @@
 /**
- * What belongs here: MSAL `PublicClientApplication` configuration and the
- * React provider that exposes it. Wraps `@azure/msal-react`'s `MsalProvider`
- * with our preconfigured instance built from `src/config/env.ts`.
- *
- * Scaffolded — implementation lands in slice 1 (App shell + Auth + Telemetry).
+ * Wraps `@azure/msal-react`'s `MsalProvider` with our preconfigured singleton,
+ * then nests the AuthContextProvider so `useAuth()` callers downstream see a
+ * unified state machine. Mounted once at the app root by bootstrap.tsx.
  */
 
-import { ReactNode } from 'react';
+import { MsalProvider } from '@azure/msal-react';
+import { type ReactNode } from 'react';
+
+import { AuthContextProvider } from './AuthContext';
+import { msalInstance } from './msalInstance';
 
 interface Props {
   children: ReactNode;
 }
 
-export const MsalAppProvider = ({ children }: Props) => {
-  // Slice 1 wraps children in <MsalProvider instance={msalInstance}>.
-  return <>{children}</>;
-};
+export const MsalAppProvider = ({ children }: Props) => (
+  <MsalProvider instance={msalInstance}>
+    <AuthContextProvider>{children}</AuthContextProvider>
+  </MsalProvider>
+);

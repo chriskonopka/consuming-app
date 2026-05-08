@@ -1,0 +1,72 @@
+.gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 2rem;
+  background: var(--bg-page);
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 3rem 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--color-navy) 8%, transparent);
+}
+
+.title {
+  font-family: var(--font-mix);
+  font-size: 2.25rem;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.button {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-teal);
+  color: var(--color-navy);
+  border-radius: var(--radius);
+  min-width: 140px;
+  min-height: 36px;
+  padding: 0.5rem 1.5rem;
+  transition: var(--transition);
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible:not(:disabled) {
+  background: var(--color-navy);
+  color: var(--color-white);
+}
+
+[data-theme='dark'] .button:hover:not(:disabled),
+[data-theme='dark'] .button:focus-visible:not(:disabled) {
+  background: var(--color-white);
+  color: var(--color-navy);
+}
+
+.button:disabled {
+  opacity: 0.6;
+}
+
+.expired {
+  color: var(--color-error);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}

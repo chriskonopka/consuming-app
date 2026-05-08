@@ -1,12 +1,19 @@
 /**
- * What belongs here: returns the current `AuthState` (subscribed to MSAL
- * account changes via the auth context).
+ * Returns the current AuthState plus action callbacks. Subscribes to the
+ * AuthContext established by `<MsalAppProvider>` at the app root.
  *
- * Scaffolded — implementation lands in slice 1.
+ * Throws if called outside the provider — that's a programming error, not a
+ * runtime condition we recover from.
  */
 
-import type { AuthState } from '@shared/types';
+import { useContext } from 'react';
 
-export const useAuth = (): AuthState => {
-  return { status: 'unauthenticated' };
+import { AuthContext } from './AuthContext';
+
+export const useAuth = () => {
+  const value = useContext(AuthContext);
+  if (!value) {
+    throw new Error('useAuth must be called inside <MsalAppProvider>');
+  }
+  return value;
 };
