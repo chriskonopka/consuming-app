@@ -1,9 +1,10 @@
 /**
- * What belongs here: wraps an async function with an AbortController; aborts
- * on dep change or unmount. Used by chat's SSE streaming.
- *
- * Scaffolded — implementation lands in slice 3.
+ * Wraps an async function with an AbortController; aborts on dep change or
+ * unmount. Used by chat's SSE streaming so navigation away during a stream
+ * cancels cleanly without leaving in-flight fetches.
  */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseAbortableReturn<T> {
   run: () => void;
@@ -14,18 +15,46 @@ interface UseAbortableReturn<T> {
 }
 
 export const useAbortable = <T>(
-  _asyncFn: (signal: AbortSignal) => Promise<T>,
-  _deps: ReadonlyArray<unknown>,
+  asyncFn: (signal: AbortSignal) => Promise<T>,
+  deps: ReadonlyArray<unknown>,
 ): UseAbortableReturn<T> => {
-  return {
-    run: () => {
-      // slice 3
-    },
-    abort: () => {
-      // slice 3
-    },
-    status: 'idle',
-    data: null,
-    error: null,
-  };
+  const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>(
+    'idle',
+  );
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  const controllerRef = useRef<AbortController | null>(null);
+  const asyncFnRef = useRef(asyncFn);
+  asyncFnRef.current = asyncFn;
+
+  const abort = useCallback(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+  }, []);
+
+  const run = useCallback(() => {
+    abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setStatus('pending');
+    setError(null);
+    void (async () => {
+      try {
+        const result = await asyncFnRef.current(controller.signal);
+        if (controller.signal.aborted) return;
+        setData(result);
+        setStatus('success');
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setStatus('error');
+      }
+    })();
+  }, [abort]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => abort(), deps);
+
+  return { run, abort, status, data, error };
 };

@@ -1,0 +1,28 @@
+.panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-light, #d0d0d0);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  z-index: 10;
+}
+
+.left {
+  border-right: 1px solid var(--border-light, #d0d0d0);
+  border-left: 0;
+}
+
+.right {
+  border-left: 1px solid var(--border-light, #d0d0d0);
+  border-right: 0;
+}
+
+:global([data-theme='dark']) .panel {
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+  color: #e6e6e6;
+}

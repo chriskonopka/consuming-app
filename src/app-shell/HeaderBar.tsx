@@ -1,6 +1,6 @@
 /**
- * Top-of-page chrome: app name (left), theme toggle + user menu (right).
- * Stays visible across all routes.
+ * Top-of-page chrome: app name (left), chat toggle + theme toggle + user
+ * menu (right). Stays visible across all routes.
  */
 
 import { ThemeToggle } from './ThemeToggle';
@@ -10,7 +10,12 @@ import styles from './HeaderBar.module.css';
 
 const APP_NAME = 'Consuming App';
 
-export const HeaderBar = () => {
+interface Props {
+  chatOpen: boolean;
+  onToggleChat: () => void;
+}
+
+export const HeaderBar = ({ chatOpen, onToggleChat }: Props) => {
   const aiOk = isAppInsightsConfigured();
 
   return (
@@ -22,6 +27,15 @@ export const HeaderBar = () => {
             telemetry off
           </span>
         )}
+        <button
+          type="button"
+          className={styles.chatToggle}
+          onClick={onToggleChat}
+          aria-pressed={chatOpen}
+          aria-label={chatOpen ? 'Close chat' : 'Open chat'}
+        >
+          💬 Chat
+        </button>
         <ThemeToggle />
         <UserMenu />
       </div>

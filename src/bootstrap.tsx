@@ -1,22 +1,20 @@
 /**
  * MF async-boundary mount. Imported asynchronously by main.tsx.
  *
- * Slice 1 wires the full provider chain:
- *   <ErrorBoundary>            outermost — catches anything in init
+ * Provider chain (outermost-to-innermost):
+ *   <ErrorBoundary>            catches anything in init
  *     <MsalAppProvider>        MSAL singleton + initialization
  *       <BrowserRouter>        react-router-dom
- *         <ThemeProvider>      light/dark toggle context
- *           <AuthGate>         sign-in screen if unauthenticated
- *             <AppShell>       chrome + routes
- *
- * Slice 2 adds <ModuleFederationPlugin> to the webpack config and lazy-loads
- * the indexer remote inside <IndexerHost />. The async-boundary pattern in
- * main.tsx is already in place — slice 2 doesn't have to refactor entry.
+ *         <QueryClientProvider> TanStack Query — slice 3 added
+ *           <ThemeProvider>    light/dark toggle context
+ *             <AuthGate>       sign-in screen if unauthenticated
+ *               <AppShell>     chrome + routes
  */
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
 import { AppShell } from './app-shell';
@@ -24,6 +22,19 @@ import { MsalAppProvider } from './auth/MsalAppProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './theme/ThemeProvider';
 import './styles/global.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Keep things crisp for chat-driven UX; the hooks override per-query
+      // staleTime / gcTime where stronger guarantees are needed.
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const rootElement = document.getElementById('root');
 
@@ -36,9 +47,11 @@ createRoot(rootElement).render(
     <ErrorBoundary>
       <MsalAppProvider>
         <BrowserRouter>
-          <ThemeProvider>
-            <AppShell />
-          </ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <AppShell />
+            </ThemeProvider>
+          </QueryClientProvider>
         </BrowserRouter>
       </MsalAppProvider>
     </ErrorBoundary>

@@ -1,9 +1,9 @@
 /**
- * What belongs here: status / type badge with text + colour. Color-blind
- * safe (text label always present).
- *
- * Scaffolded — implementation lands in slice 3.
+ * Status / type badge with text + colour. Color-blind safe — text label
+ * always present.
  */
+
+import styles from './Pill.module.css';
 
 interface Props {
   label: string;
@@ -12,6 +12,14 @@ interface Props {
   truncated?: boolean;
 }
 
-export const Pill = ({ label, ariaLabel }: Props) => {
-  return <span aria-label={ariaLabel ?? label}>{label}</span>;
+export const Pill = ({ label, tone, ariaLabel, truncated }: Props) => {
+  return (
+    <span
+      className={`${styles.pill} ${styles[tone]} ${truncated ? styles.truncated : ''}`}
+      aria-label={ariaLabel ?? label}
+      title={truncated ? label : undefined}
+    >
+      {label}
+    </span>
+  );
 };

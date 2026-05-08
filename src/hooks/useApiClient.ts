@@ -36,7 +36,7 @@ export class ApiError extends Error {
   }
 }
 
-interface ApiClient {
+export interface ApiClient {
   get<T>(path: string, init?: RequestInit): Promise<T>;
   post<T>(path: string, body?: unknown, init?: RequestInit): Promise<T>;
   del<T>(path: string): Promise<T>;

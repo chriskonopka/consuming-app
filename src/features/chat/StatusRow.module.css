@@ -1,0 +1,14 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #555);
+  border-radius: 0.375rem;
+  background: var(--bg-page, #f5f5f5);
+}
+
+.label {
+  font-weight: 500;
+}

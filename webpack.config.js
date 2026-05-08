@@ -140,6 +140,15 @@ module.exports = (_env, argv) => {
           react: { singleton: true, requiredVersion: false, eager: false },
           'react-dom': { singleton: true, requiredVersion: false, eager: false },
           'react-dom/client': { singleton: true, requiredVersion: false, eager: false },
+          // The indexer uses react-query internally but does NOT declare it
+          // shared on its side. Declaring it here as a singleton makes the
+          // host's QueryClient the single instance — preempts the cache-
+          // fragmentation issue called out in module-boundaries.md.
+          '@tanstack/react-query': {
+            singleton: true,
+            requiredVersion: false,
+            eager: false,
+          },
         },
       }),
 

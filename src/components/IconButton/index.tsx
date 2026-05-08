@@ -1,11 +1,11 @@
 /**
- * What belongs here: Phosphor icon wrapper with consistent sizing + a11y
- * label. `aria-label` is mandatory.
- *
- * Scaffolded — implementation lands in slice 3.
+ * Phosphor icon wrapper with consistent sizing + a11y label.
+ * `aria-label` is mandatory.
  */
 
 import type { ComponentType } from 'react';
+
+import styles from './IconButton.module.css';
 
 interface Props {
   icon: ComponentType<{ size?: number; weight?: 'regular' | 'bold' }>;
@@ -15,10 +15,22 @@ interface Props {
   tone?: 'default' | 'primary' | 'danger';
 }
 
-export const IconButton = ({ icon: Icon, ariaLabel, onClick, disabled }: Props) => {
+export const IconButton = ({
+  icon: Icon,
+  ariaLabel,
+  onClick,
+  disabled,
+  tone = 'default',
+}: Props) => {
   return (
-    <button type="button" aria-label={ariaLabel} onClick={onClick} disabled={disabled}>
-      <Icon size={24} weight="regular" />
+    <button
+      type="button"
+      className={`${styles.button} ${styles[tone]}`}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <Icon size={20} weight="regular" />
     </button>
   );
 };

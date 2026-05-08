@@ -1,0 +1,43 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+
+.truncated {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.neutral {
+  background: var(--bg-page, #f0f0f0);
+  color: var(--text-secondary, #555);
+  border-color: var(--border-light, #d0d0d0);
+}
+
+.info {
+  background: color-mix(in srgb, var(--color-blue, #0078d4) 12%, transparent);
+  color: var(--color-blue, #0078d4);
+}
+
+.success {
+  background: color-mix(in srgb, var(--color-success, #107c10) 12%, transparent);
+  color: var(--color-success, #107c10);
+}
+
+.warning {
+  background: color-mix(in srgb, var(--color-warning, #f7c52d) 14%, transparent);
+  color: #7a5a00;
+}
+
+.error {
+  background: color-mix(in srgb, var(--color-error, #d13438) 12%, transparent);
+  color: var(--color-error, #d13438);
+}

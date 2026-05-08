@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { serialize, deserialize } from 'v8';
 import { IDBFactory } from 'fake-indexeddb';
 import { TextEncoder, TextDecoder } from 'util';
+import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 
 // jsdom does not expose TextEncoder/TextDecoder. react-router v7 (and other
 // modern packages) require them at module-evaluation time.
@@ -13,6 +14,13 @@ if (typeof globalThis.TextEncoder === 'undefined') {
 if (typeof globalThis.TextDecoder === 'undefined') {
   (globalThis as { TextDecoder: typeof TextDecoder }).TextDecoder =
     TextDecoder as unknown as typeof globalThis.TextDecoder;
+}
+
+// jsdom strips Node 18+ web streams. parseSse + useSseChat use them.
+if (typeof globalThis.ReadableStream === 'undefined') {
+  (globalThis as { ReadableStream: unknown }).ReadableStream = ReadableStream;
+  (globalThis as { WritableStream: unknown }).WritableStream = WritableStream;
+  (globalThis as { TransformStream: unknown }).TransformStream = TransformStream;
 }
 
 // Register the jest-axe matcher globally so every component test can call

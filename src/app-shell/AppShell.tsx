@@ -2,17 +2,18 @@
  * App shell — the page chrome that hosts the indexer canvas plus the chat
  * and viewer panels (REQUIREMENTS.md §2.8).
  *
- * Slice 1 state: auth-gated chrome. Routes:
- *   /                       — landing (renders <HealthPage />)
- *   /c/:documentSetId       — collection-scoped (placeholder until slice 2 mounts <IndexerHost />)
- *
- * Slices 2-4 fill in IndexerHost, ChatPanel, DocumentViewer.
+ * Slice 3 state: chat panel slot wired. Slices 4-5 add the viewer + sharing.
+ *   /                       — IndexerHost without a deep-linked collection
+ *   /c/:documentSetId       — IndexerHost mounted, deep-linked
  */
+
+import { useState } from 'react';
 
 import { Route, Routes } from 'react-router-dom';
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthGate } from '../auth/AuthGate';
+import { ChatPanel } from '../features/chat';
 import { IndexerHost } from '../features/indexer-host';
 import { HealthPage } from '../health';
 import { useTrackPageView } from '../telemetry/useTrackPageView';
@@ -22,12 +23,16 @@ import styles from './AppShell.module.css';
 
 export const AppShell = () => {
   useTrackPageView();
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <ErrorBoundary>
       <AuthGate>
         <div className={styles.shell}>
-          <HeaderBar />
+          <HeaderBar
+            chatOpen={chatOpen}
+            onToggleChat={() => setChatOpen((prev) => !prev)}
+          />
           <main className={styles.main} id="main">
             <Routes>
               <Route path="/" element={<IndexerHost />} />
@@ -35,6 +40,7 @@ export const AppShell = () => {
               <Route path="*" element={<HealthPage />} />
             </Routes>
           </main>
+          <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
         </div>
       </AuthGate>
     </ErrorBoundary>
