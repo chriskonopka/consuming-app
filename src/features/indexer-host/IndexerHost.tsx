@@ -9,6 +9,7 @@
 
 import {
   lazy,
+  startTransition,
   Suspense,
   useCallback,
   useEffect,
@@ -89,16 +90,26 @@ export const IndexerHost = () => {
           return;
         }
         case 'collection/activated': {
-          if (event.documentSetId && event.accessRole) {
-            setActiveCollection({
-              documentSetId: event.documentSetId,
-              accessRole: event.accessRole,
-            });
-            url.pushCollection(event.documentSetId);
-          } else {
-            setActiveCollection(null);
-            url.pushCollection(null);
-          }
+          // Wrap both updates in a transition so they share the same priority
+          // lane and apply in a single render. Without this, setActiveCollection
+          // (urgent) lands before navigate (transition in react-router v7);
+          // the sync effect below then runs in the intermediate render and
+          // sees activeCollection populated while url.documentSetId is still
+          // stale-null — which it interprets as "deselect" and dispatches
+          // selectCollection(null), wiping the indexer's state and bouncing
+          // the user back to the collection list.
+          startTransition(() => {
+            if (event.documentSetId && event.accessRole) {
+              setActiveCollection({
+                documentSetId: event.documentSetId,
+                accessRole: event.accessRole,
+              });
+              url.pushCollection(event.documentSetId);
+            } else {
+              setActiveCollection(null);
+              url.pushCollection(null);
+            }
+          });
           return;
         }
         case 'collection/list-changed': {

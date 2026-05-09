@@ -11,8 +11,8 @@ import { useCallback, useMemo } from 'react';
 
 import {
   useLocation,
+  useMatch,
   useNavigate,
-  useParams,
   useSearchParams,
 } from 'react-router-dom';
 
@@ -25,12 +25,16 @@ interface UrlState {
 }
 
 export const useUrlState = (): UrlState => {
-  const params = useParams<{ documentSetId?: string }>();
+  // useMatch lets the hook extract the documentSetId from the URL regardless
+  // of the route the consumer is mounted under — required because IndexerHost
+  // mounts on a wildcard route (see AppShell) so useParams would not see the
+  // :documentSetId segment.
+  const collectionMatch = useMatch('/c/:documentSetId');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const documentSetId = params.documentSetId ?? null;
+  const documentSetId = collectionMatch?.params.documentSetId ?? null;
   const folderId = searchParams.get('folderId');
   const documentId = searchParams.get('documentId');
 

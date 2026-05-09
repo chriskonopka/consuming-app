@@ -2,9 +2,14 @@
  * App shell — the page chrome that hosts the indexer canvas plus the chat
  * and viewer panels (REQUIREMENTS.md §2.8).
  *
+ * IndexerHost is mounted on a single wildcard route so that navigating
+ * between `/` and `/c/:documentSetId` (or between two collections) is a
+ * URL-parameter change, not a route swap. A route swap would unmount
+ * IndexerHost — destroying indexerRef, the indexer's QueryClient, and any
+ * in-flight requests — which violates §2.6 (the imperative ref must persist
+ * across URL-driven collection switches).
+ *
  * Slice 3 state: chat panel slot wired. Slices 4-5 add the viewer + sharing.
- *   /                       — IndexerHost without a deep-linked collection
- *   /c/:documentSetId       — IndexerHost mounted, deep-linked
  */
 
 import { useState } from 'react';
@@ -35,9 +40,8 @@ export const AppShell = () => {
           />
           <main className={styles.main} id="main">
             <Routes>
-              <Route path="/" element={<IndexerHost />} />
-              <Route path="/c/:documentSetId" element={<IndexerHost />} />
-              <Route path="*" element={<HealthPage />} />
+              <Route path="/health" element={<HealthPage />} />
+              <Route path="*" element={<IndexerHost />} />
             </Routes>
           </main>
           <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
