@@ -3,62 +3,71 @@
  * to narrow the next chat send. The server treats empty arrays as "whole
  * DocumentSet" (legacy behavior), so empty is the unscoped default.
  *
- * Sources of state changes:
- *   - `TOGGLE_DOCUMENT` / `TOGGLE_FOLDER`: transitional bridge from the
- *     indexer's `document/selected` event (see IndexerHost.tsx). Goes away
- *     once the indexer ships its dedicated selection event.
- *   - `SET_SELECTION`: future entry point for the indexer's planned
- *     `selection/changed` event — the indexer becomes the source of truth and
- *     the consumer mirrors it. See docs/architecture/indexer-handoff-selection-event.md.
- *   - `REMOVE_DOCUMENT` / `REMOVE_FOLDER` / `CLEAR`: user-driven via the
- *     ScopeIndicator chips.
- *   - `RESET_FOR_COLLECTION_CHANGE`: scope doesn't carry across document sets;
- *     activating a different collection clears it.
+ * State carries the rich payload shipped by the indexer's `selection/changed`
+ * event (PR #3 / 3cf5603): document → `{ documentId, fileName }`, folder →
+ * `{ folderId, folderName, path }`. Chip labels read straight from here — no
+ * `useDocumentMetadata` lookup needed.
  *
- * Per-array cap of 64 (server boundary) is enforced inside the reducer — TOGGLE
- * and SET ignore adds that would exceed the cap. SET truncates explicitly.
- * web-state-management.md: exhaustive switch, no `default`.
+ * Sources of state changes:
+ *   - `SET_SELECTION`: the indexer's `selection/changed` event — authoritative
+ *     replace of both arrays. Indexer is the source of truth.
+ *   - `REMOVE_DOCUMENT` / `REMOVE_FOLDER` / `CLEAR`: chat-side affordances on
+ *     `<ScopeIndicator>`. These are *local overrides* that diverge from the
+ *     indexer's UI until the next `selection/changed` mutation re-syncs.
+ *     Documented and intentional — see slice doc.
+ *   - `RESET_FOR_COLLECTION_CHANGE`: defensive belt-and-braces. The indexer
+ *     also emits `selection/changed` with empty arrays on collection switch
+ *     (per the API team's confirmation), so this is redundant but cheap.
+ *
+ * Per-array cap of 64 (`SEND_MESSAGE_SELECTION_MAX`) is the server boundary.
+ * `SET_SELECTION` dedupes by id and truncates above the cap; the indexer also
+ * enforces the cap before emitting, so truncation here is defense in depth.
+ *
+ * web-state-management.md: exhaustive switch, no `default`, discriminated union.
  */
 
-import { SEND_MESSAGE_SELECTION_MAX } from '@shared/types';
+import {
+  SEND_MESSAGE_SELECTION_MAX,
+  type SelectionDocument,
+  type SelectionFolder,
+} from '@shared/types';
 
 export interface ChatScopeState {
-  documentIds: string[];
-  folderIds: string[];
+  documents: SelectionDocument[];
+  folders: SelectionFolder[];
 }
 
 export type ChatScopeAction =
-  | { type: 'TOGGLE_DOCUMENT'; documentId: string }
-  | { type: 'TOGGLE_FOLDER'; folderId: string }
+  | { type: 'SET_SELECTION'; documents: SelectionDocument[]; folders: SelectionFolder[] }
   | { type: 'REMOVE_DOCUMENT'; documentId: string }
   | { type: 'REMOVE_FOLDER'; folderId: string }
-  | { type: 'SET_SELECTION'; documentIds: string[]; folderIds: string[] }
   | { type: 'CLEAR' }
   | { type: 'RESET_FOR_COLLECTION_CHANGE' };
 
 export const buildInitialChatScopeState = (): ChatScopeState => ({
-  documentIds: [],
-  folderIds: [],
+  documents: [],
+  folders: [],
 });
 
-const toggleInArray = (list: string[], value: string): string[] => {
-  const index = list.indexOf(value);
-  if (index !== -1) {
-    return [...list.slice(0, index), ...list.slice(index + 1)];
+const dedupeAndCapDocuments = (list: readonly SelectionDocument[]): SelectionDocument[] => {
+  const seen = new Set<string>();
+  const result: SelectionDocument[] = [];
+  for (const item of list) {
+    if (seen.has(item.documentId)) continue;
+    seen.add(item.documentId);
+    result.push(item);
+    if (result.length >= SEND_MESSAGE_SELECTION_MAX) break;
   }
-  if (list.length >= SEND_MESSAGE_SELECTION_MAX) {
-    return list;
-  }
-  return [...list, value];
+  return result;
 };
 
-const dedupeAndCap = (list: readonly string[]): string[] => {
+const dedupeAndCapFolders = (list: readonly SelectionFolder[]): SelectionFolder[] => {
   const seen = new Set<string>();
-  const result: string[] = [];
-  for (const value of list) {
-    if (seen.has(value)) continue;
-    seen.add(value);
-    result.push(value);
+  const result: SelectionFolder[] = [];
+  for (const item of list) {
+    if (seen.has(item.folderId)) continue;
+    seen.add(item.folderId);
+    result.push(item);
     if (result.length >= SEND_MESSAGE_SELECTION_MAX) break;
   }
   return result;
@@ -69,40 +78,30 @@ export const chatScopeReducer = (
   action: ChatScopeAction,
 ): ChatScopeState => {
   switch (action.type) {
-    case 'TOGGLE_DOCUMENT': {
-      const next = toggleInArray(state.documentIds, action.documentId);
-      if (next === state.documentIds) return state;
-      return { ...state, documentIds: next };
-    }
-    case 'TOGGLE_FOLDER': {
-      const next = toggleInArray(state.folderIds, action.folderId);
-      if (next === state.folderIds) return state;
-      return { ...state, folderIds: next };
-    }
+    case 'SET_SELECTION':
+      return {
+        documents: dedupeAndCapDocuments(action.documents),
+        folders: dedupeAndCapFolders(action.folders),
+      };
     case 'REMOVE_DOCUMENT': {
-      const index = state.documentIds.indexOf(action.documentId);
+      const index = state.documents.findIndex((doc) => doc.documentId === action.documentId);
       if (index === -1) return state;
       return {
         ...state,
-        documentIds: [...state.documentIds.slice(0, index), ...state.documentIds.slice(index + 1)],
+        documents: [...state.documents.slice(0, index), ...state.documents.slice(index + 1)],
       };
     }
     case 'REMOVE_FOLDER': {
-      const index = state.folderIds.indexOf(action.folderId);
+      const index = state.folders.findIndex((folder) => folder.folderId === action.folderId);
       if (index === -1) return state;
       return {
         ...state,
-        folderIds: [...state.folderIds.slice(0, index), ...state.folderIds.slice(index + 1)],
+        folders: [...state.folders.slice(0, index), ...state.folders.slice(index + 1)],
       };
     }
-    case 'SET_SELECTION':
-      return {
-        documentIds: dedupeAndCap(action.documentIds),
-        folderIds: dedupeAndCap(action.folderIds),
-      };
     case 'CLEAR':
     case 'RESET_FOR_COLLECTION_CHANGE':
-      if (state.documentIds.length === 0 && state.folderIds.length === 0) {
+      if (state.documents.length === 0 && state.folders.length === 0) {
         return state;
       }
       return buildInitialChatScopeState();

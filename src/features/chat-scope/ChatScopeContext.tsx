@@ -1,20 +1,18 @@
 /**
  * Provider + hook for `ChatScopeState`. Lives above `<IndexerHost>` and
- * `<ChatPanel>` so the indexer's `document/selected` bridge (today) and the
- * indexer's planned `selection/changed` event (future) can both write to the
- * same state the chat send path reads from.
+ * `<ChatPanel>` so the indexer's `selection/changed` event handler (which
+ * lives in IndexerHost.tsx) and the chat send path see the same state.
  *
- * Exports:
- *   - `<ChatScopeProvider>` — owns the reducer.
- *   - `useChatScope()` — returns state + the action creators the rest of the
- *     app calls.
- *
- * Throwing when used outside the provider keeps misuse loud — every consumer
- * (IndexerHost bridge, ChatPanel, ScopeIndicator, useSseChat send path) is on
- * the AppShell render path and must see the provider.
+ * The indexer is the authoritative source of selection — `setSelection` is
+ * called from the IndexerHost event handler on every `selection/changed`
+ * emission. The user-facing `removeDocument` / `removeFolder` / `clear`
+ * actions are local overrides that diverge from the indexer's UI until the
+ * next `selection/changed` re-syncs.
  */
 
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
+
+import type { SelectionDocument, SelectionFolder } from '@shared/types';
 
 import {
   buildInitialChatScopeState,
@@ -23,11 +21,9 @@ import {
 } from './chatScopeReducer';
 
 export interface ChatScopeActions {
-  toggleDocument: (documentId: string) => void;
-  toggleFolder: (folderId: string) => void;
+  setSelection: (documents: SelectionDocument[], folders: SelectionFolder[]) => void;
   removeDocument: (documentId: string) => void;
   removeFolder: (folderId: string) => void;
-  setSelection: (documentIds: string[], folderIds: string[]) => void;
   clear: () => void;
   resetForCollectionChange: () => void;
 }
@@ -45,12 +41,9 @@ interface ProviderProps {
 export const ChatScopeProvider = ({ children }: ProviderProps) => {
   const [state, dispatch] = useReducer(chatScopeReducer, undefined, buildInitialChatScopeState);
 
-  const toggleDocument = useCallback(
-    (documentId: string) => dispatch({ type: 'TOGGLE_DOCUMENT', documentId }),
-    [],
-  );
-  const toggleFolder = useCallback(
-    (folderId: string) => dispatch({ type: 'TOGGLE_FOLDER', folderId }),
+  const setSelection = useCallback(
+    (documents: SelectionDocument[], folders: SelectionFolder[]) =>
+      dispatch({ type: 'SET_SELECTION', documents, folders }),
     [],
   );
   const removeDocument = useCallback(
@@ -59,11 +52,6 @@ export const ChatScopeProvider = ({ children }: ProviderProps) => {
   );
   const removeFolder = useCallback(
     (folderId: string) => dispatch({ type: 'REMOVE_FOLDER', folderId }),
-    [],
-  );
-  const setSelection = useCallback(
-    (documentIds: string[], folderIds: string[]) =>
-      dispatch({ type: 'SET_SELECTION', documentIds, folderIds }),
     [],
   );
   const clear = useCallback(() => dispatch({ type: 'CLEAR' }), []);
@@ -75,24 +63,13 @@ export const ChatScopeProvider = ({ children }: ProviderProps) => {
   const value = useMemo<ChatScopeContextValue>(
     () => ({
       state,
-      toggleDocument,
-      toggleFolder,
+      setSelection,
       removeDocument,
       removeFolder,
-      setSelection,
       clear,
       resetForCollectionChange,
     }),
-    [
-      state,
-      toggleDocument,
-      toggleFolder,
-      removeDocument,
-      removeFolder,
-      setSelection,
-      clear,
-      resetForCollectionChange,
-    ],
+    [state, setSelection, removeDocument, removeFolder, clear, resetForCollectionChange],
   );
 
   return <ChatScopeContext.Provider value={value}>{children}</ChatScopeContext.Provider>;

@@ -39,6 +39,18 @@ declare module 'mws_indexer/types' {
 
   type AccessRole = 'Owner' | 'Shared';
 
+  export interface SelectionDocument {
+    documentId: string;
+    fileName: string;
+  }
+
+  export interface SelectionFolder {
+    folderId: string;
+    folderName: string;
+    /** Slash-joined ancestor path emitted by the indexer for display. */
+    path: string;
+  }
+
   export type IndexerEvent =
     | { type: 'auth/expired' }
     | {
@@ -52,6 +64,19 @@ declare module 'mws_indexer/types' {
         documentSetId: string;
         documentId: string;
         folderId: string | null;
+      }
+    | {
+        /**
+         * Per indexer PR #3 (commit 3cf5603): authoritative chat-scope
+         * selection. Both arrays are always present (never undefined).
+         * Fires on every mutation (add, remove, select-all, clear) and
+         * on collection switch (with empty arrays for the new id). Does
+         * not fire on initial mount when documentSetId is null.
+         */
+        type: 'selection/changed';
+        documentSetId: string;
+        documents: SelectionDocument[];
+        folders: SelectionFolder[];
       }
     | {
         type: 'error/unhandled';

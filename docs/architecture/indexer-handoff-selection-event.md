@@ -2,8 +2,8 @@
 
 **Audience:** the reusable-indexer (mws_indexer) front-end team.
 **Author:** consuming-app front-end team, 2026-05-11.
-**Status:** proposal — needs review before implementation.
-**Companion:** `docs/architecture/05-slice-chat-scope-selection.md` (consumer side, already implemented and shipping).
+**Status:** **shipped 2026-05-11** — indexer PR #3 (`3cf5603`) merged with the richer payload (`fileName` + `folderName` + `path`) and the consumer-side flip landed in [`06-slice-flip-selection-bridge.md`](./06-slice-flip-selection-bridge.md). Kept on disk as historical context for the contract conversation.
+**Companion:** `docs/architecture/05-slice-chat-scope-selection.md` (the initial consumer slice with the transitional bridge) and `docs/architecture/06-slice-flip-selection-bridge.md` (the flip).
 
 ---
 

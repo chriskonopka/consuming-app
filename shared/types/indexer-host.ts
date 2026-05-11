@@ -14,6 +14,8 @@ export type {
   IndexerEvent,
   IndexerHandle,
   IndexerInitialState,
+  SelectionDocument,
+  SelectionFolder,
   ThemeTokenKey,
 } from 'mws_indexer/types';
 

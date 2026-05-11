@@ -1,54 +1,22 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { ScopeIndicator } from './ScopeIndicator';
 
-const apiMocks = {
-  get: jest.fn(),
-};
-
-jest.mock('../../hooks/useApiClient', () => ({
-  useApiClient: () => apiMocks,
-}));
-
-const renderWith = (
-  ui: React.ReactElement,
-  { resolvedFiles }: { resolvedFiles?: Record<string, string> } = {},
-) => {
-  apiMocks.get.mockImplementation(async (path: string) => {
-    const documentId = decodeURIComponent(path.split('/').pop() ?? '');
-    return {
-      documentId,
-      documentSetId: 'set-1',
-      batchId: 'batch-1',
-      folderId: null,
-      fileName: resolvedFiles?.[documentId] ?? 'Document',
-      fileType: 'Other',
-      contentType: 'application/pdf',
-      fileSizeBytes: 1024,
-      status: 'Ready',
-      chunkCount: 4,
-      createdAt: '2026-05-11T00:00:00Z',
-      updatedAt: '2026-05-11T00:00:00Z',
-    };
-  });
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+const sampleState = {
+  documents: [
+    { documentId: 'doc-a', fileName: 'Quarterly report.pdf' },
+    { documentId: 'doc-b', fileName: 'Contract.pdf' },
+  ],
+  folders: [{ folderId: 'folder-1', folderName: 'Reports', path: 'root/Reports' }],
 };
 
 describe('<ScopeIndicator>', () => {
-  beforeEach(() => {
-    apiMocks.get.mockReset();
-  });
-
   it('renders nothing when both arrays are empty', () => {
-    const { container } = renderWith(
+    const { container } = render(
       <ScopeIndicator
-        state={{ documentIds: [], folderIds: [] }}
+        state={{ documents: [], folders: [] }}
         onRemoveDocument={jest.fn()}
         onRemoveFolder={jest.fn()}
         onClearAll={jest.fn()}
@@ -57,84 +25,90 @@ describe('<ScopeIndicator>', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders a chip per document and folder, with the total count', async () => {
-    renderWith(
+  it('renders one chip per document and folder using the event-supplied names', () => {
+    render(
       <ScopeIndicator
-        state={{ documentIds: ['doc-a', 'doc-b'], folderIds: ['folder-1'] }}
+        state={sampleState}
         onRemoveDocument={jest.fn()}
         onRemoveFolder={jest.fn()}
         onClearAll={jest.fn()}
       />,
-      { resolvedFiles: { 'doc-a': 'Quarterly report.pdf', 'doc-b': 'Contract.pdf' } },
     );
     expect(screen.getByLabelText('Chat scope')).toBeInTheDocument();
     expect(screen.getByText('Scoped to 3')).toBeInTheDocument();
-    expect(await screen.findByText('Quarterly report.pdf')).toBeInTheDocument();
-    expect(await screen.findByText('Contract.pdf')).toBeInTheDocument();
-    expect(screen.getByText('Folder 1')).toBeInTheDocument();
+    expect(screen.getByText('Quarterly report.pdf')).toBeInTheDocument();
+    expect(screen.getByText('Contract.pdf')).toBeInTheDocument();
+    expect(screen.getByText('Reports')).toBeInTheDocument();
+  });
+
+  it('exposes the folder path as the chip title attribute', () => {
+    render(
+      <ScopeIndicator
+        state={sampleState}
+        onRemoveDocument={jest.fn()}
+        onRemoveFolder={jest.fn()}
+        onClearAll={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Reports')).toHaveAttribute('title', 'root/Reports');
   });
 
   it('calls onRemoveDocument with the right id when × is clicked', async () => {
     const user = userEvent.setup();
     const onRemoveDocument = jest.fn();
-    renderWith(
+    render(
       <ScopeIndicator
-        state={{ documentIds: ['doc-a'], folderIds: [] }}
+        state={sampleState}
         onRemoveDocument={onRemoveDocument}
         onRemoveFolder={jest.fn()}
         onClearAll={jest.fn()}
       />,
-      { resolvedFiles: { 'doc-a': 'Quarterly report.pdf' } },
     );
-    const removeButton = await screen.findByRole('button', {
-      name: 'Remove Quarterly report.pdf from chat scope',
-    });
-    await user.click(removeButton);
+    await user.click(
+      screen.getByRole('button', { name: 'Remove Quarterly report.pdf from chat scope' }),
+    );
     expect(onRemoveDocument).toHaveBeenCalledWith('doc-a');
   });
 
   it('calls onRemoveFolder for folder chips', async () => {
     const user = userEvent.setup();
     const onRemoveFolder = jest.fn();
-    renderWith(
+    render(
       <ScopeIndicator
-        state={{ documentIds: [], folderIds: ['folder-x'] }}
+        state={sampleState}
         onRemoveDocument={jest.fn()}
         onRemoveFolder={onRemoveFolder}
         onClearAll={jest.fn()}
       />,
     );
-    await user.click(screen.getByRole('button', { name: 'Remove Folder 1 from chat scope' }));
-    expect(onRemoveFolder).toHaveBeenCalledWith('folder-x');
+    await user.click(screen.getByRole('button', { name: 'Remove folder Reports from chat scope' }));
+    expect(onRemoveFolder).toHaveBeenCalledWith('folder-1');
   });
 
   it('fires onClearAll from the Clear all button', async () => {
     const user = userEvent.setup();
     const onClearAll = jest.fn();
-    renderWith(
+    render(
       <ScopeIndicator
-        state={{ documentIds: ['doc-a'], folderIds: ['folder-x'] }}
+        state={sampleState}
         onRemoveDocument={jest.fn()}
         onRemoveFolder={jest.fn()}
         onClearAll={onClearAll}
       />,
-      { resolvedFiles: { 'doc-a': 'Quarterly report.pdf' } },
     );
     await user.click(screen.getByRole('button', { name: 'Clear all' }));
     expect(onClearAll).toHaveBeenCalled();
   });
 
   it('has no axe violations in the populated state', async () => {
-    const { container } = renderWith(
+    const { container } = render(
       <ScopeIndicator
-        state={{ documentIds: ['doc-a'], folderIds: ['folder-x'] }}
+        state={sampleState}
         onRemoveDocument={jest.fn()}
         onRemoveFolder={jest.fn()}
         onClearAll={jest.fn()}
       />,
-      { resolvedFiles: { 'doc-a': 'Quarterly report.pdf' } },
     );
-    await screen.findByText('Quarterly report.pdf');
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });

@@ -20,16 +20,19 @@ export interface IndexerEventHandlers {
   onCollectionListChanged: () => void;
   /** Open the document in the viewer (slice 4 wires the viewer; slice 2 stores the click). */
   onDocumentSelected: (event: Extract<IndexerEvent, { type: 'document/selected' }>) => void;
+  /**
+   * Authoritative chat-scope selection (indexer PR #3 / 3cf5603). The
+   * consumer mirrors the payload into chat-scope state — see IndexerHost.tsx
+   * and docs/architecture/06-slice-flip-selection-bridge.md.
+   */
+  onSelectionChanged: (event: Extract<IndexerEvent, { type: 'selection/changed' }>) => void;
   /** Trigger MSAL refresh + bump remountKey to force-remount the indexer. */
   onAuthExpired: () => void;
   /** Forward to telemetry (`appInsights.trackException`). */
   onUnhandledError: (event: Extract<IndexerEvent, { type: 'error/unhandled' }>) => void;
 }
 
-export const routeIndexerEvent = (
-  event: IndexerEvent,
-  handlers: IndexerEventHandlers,
-): void => {
+export const routeIndexerEvent = (event: IndexerEvent, handlers: IndexerEventHandlers): void => {
   switch (event.type) {
     case 'collection/activated':
       handlers.onCollectionActivated(event);
@@ -39,6 +42,9 @@ export const routeIndexerEvent = (
       return;
     case 'document/selected':
       handlers.onDocumentSelected(event);
+      return;
+    case 'selection/changed':
+      handlers.onSelectionChanged(event);
       return;
     case 'auth/expired':
       handlers.onAuthExpired();
@@ -52,9 +58,7 @@ export const routeIndexerEvent = (
       // `never` and the assignment fails type-check. Per module-boundaries.md
       // §2.3 every event type MUST have a handler.
       const exhaustive: never = event;
-      throw new Error(
-        `Unhandled indexer event type: ${(exhaustive as { type: string }).type}`,
-      );
+      throw new Error(`Unhandled indexer event type: ${(exhaustive as { type: string }).type}`);
     }
   }
 };
