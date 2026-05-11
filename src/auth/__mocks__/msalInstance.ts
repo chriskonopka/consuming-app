@@ -5,9 +5,15 @@
  * `jest.requireMock('./msalInstance')` (or use the spy returned via
  * `import { msalInstance } from './msalInstance'` after enabling the mock).
  *
- * Default behaviour: no active account, no accounts, login/logout succeed
- * synchronously, acquireTokenSilent returns a fixed token, acquireTokenPopup
- * also returns a fixed token. Tests override per-method via `mockImplementation`.
+ * Default behaviour: no active account, no accounts, login/logout (popup AND
+ * redirect variants) succeed synchronously, acquireTokenSilent returns a
+ * fixed token, acquireTokenPopup also returns a fixed token,
+ * handleRedirectPromise returns null. Tests override per-method via
+ * `mockImplementation`.
+ *
+ * Production uses the redirect variants (popup flow caused circular sign-in
+ * in modern Chrome — see `auth/AuthContext.tsx` header). Popup mocks remain
+ * so callers that intentionally opt into popup can still be tested.
  */
 
 import type { EventCallbackFunction } from '@azure/msal-browser';
@@ -43,6 +49,12 @@ const baseInstance = {
   getActiveAccount: jest.fn(() => null),
   getAllAccounts: jest.fn(() => [] as ReturnType<typeof Object>[]),
   setActiveAccount: jest.fn(),
+  // Redirect variants — what production calls.
+  loginRedirect: jest.fn(async () => undefined),
+  logoutRedirect: jest.fn(async () => undefined),
+  acquireTokenRedirect: jest.fn(async () => undefined),
+  handleRedirectPromise: jest.fn(async () => null),
+  // Popup variants retained for back-compat with any opt-in caller.
   loginPopup: jest.fn(async () => ({})),
   logoutPopup: jest.fn(async () => undefined),
   acquireTokenSilent: jest.fn(async () => ({ accessToken: 'mock-silent-token' })),
@@ -92,6 +104,10 @@ export const __resetMsalMock = () => {
   baseInstance.initialize.mockImplementation(async () => undefined);
   baseInstance.getActiveAccount.mockReturnValue(null);
   baseInstance.getAllAccounts.mockReturnValue([]);
+  baseInstance.loginRedirect.mockImplementation(async () => undefined);
+  baseInstance.logoutRedirect.mockImplementation(async () => undefined);
+  baseInstance.acquireTokenRedirect.mockImplementation(async () => undefined);
+  baseInstance.handleRedirectPromise.mockImplementation(async () => null);
   baseInstance.loginPopup.mockImplementation(async () => ({}));
   baseInstance.logoutPopup.mockImplementation(async () => undefined);
   baseInstance.acquireTokenSilent.mockImplementation(async () => ({

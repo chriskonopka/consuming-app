@@ -87,7 +87,9 @@ describe('UserMenu', () => {
 
   it('signs out via MSAL when the menu item is clicked', async () => {
     const user = userEvent.setup();
-    msalMock.msalInstance.logoutPopup.mockImplementation(async () => {
+    // Production calls logoutRedirect (popup flow was retired 2026-05-11 —
+    // see auth/AuthContext.tsx header).
+    msalMock.msalInstance.logoutRedirect.mockImplementation(async () => {
       msalMock.__emitMsalEvent({ eventType: EventType.LOGOUT_SUCCESS });
     });
     await renderSignedIn();
@@ -96,7 +98,7 @@ describe('UserMenu', () => {
     await user.click(trigger);
     await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
 
-    expect(msalMock.msalInstance.logoutPopup).toHaveBeenCalled();
+    expect(msalMock.msalInstance.logoutRedirect).toHaveBeenCalled();
   });
 
   it('falls back to username initials when name is missing', async () => {

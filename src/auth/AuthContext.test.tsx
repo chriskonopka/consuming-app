@@ -95,13 +95,15 @@ describe('AuthContextProvider', () => {
       name: 'Test',
       username: 'test@example.com',
     };
-    msalMock.msalInstance.loginPopup.mockImplementation(async () => {
-      // Simulate the LOGIN_SUCCESS event the real MSAL would emit.
+    msalMock.msalInstance.loginRedirect.mockImplementation(async () => {
+      // In production loginRedirect navigates to MS and back; the LOGIN_SUCCESS
+      // event fires from handleRedirectPromise on the redirect-back page load.
+      // The mock short-circuits that: emit LOGIN_SUCCESS synchronously so the
+      // AuthContext event handler runs on the same render tick.
       msalMock.__emitMsalEvent({
         eventType: EventType.LOGIN_SUCCESS,
         payload: { account },
       });
-      return {};
     });
 
     render(
@@ -113,13 +115,13 @@ describe('AuthContextProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'sign-in' }));
 
-    expect(msalMock.msalInstance.loginPopup).toHaveBeenCalled();
+    expect(msalMock.msalInstance.loginRedirect).toHaveBeenCalled();
     expect(screen.getByTestId('status').textContent).toBe('authenticated');
   });
 
-  it('returns to unauthenticated if loginPopup throws', async () => {
+  it('returns to unauthenticated if loginRedirect throws before the navigation', async () => {
     const user = userEvent.setup();
-    msalMock.msalInstance.loginPopup.mockRejectedValue(new Error('user_cancelled'));
+    msalMock.msalInstance.loginRedirect.mockRejectedValue(new Error('redirect_failed'));
 
     render(
       <AuthContextProvider>
@@ -133,7 +135,7 @@ describe('AuthContextProvider', () => {
     expect(screen.getByTestId('status').textContent).toBe('unauthenticated');
   });
 
-  it('signOut triggers MSAL logoutPopup and the LOGOUT_SUCCESS event flips state', async () => {
+  it('signOut triggers MSAL logoutRedirect and the LOGOUT_SUCCESS event flips state', async () => {
     const user = userEvent.setup();
     const account: Partial<MsalAccountInfo> = {
       homeAccountId: 'oid',
@@ -141,7 +143,9 @@ describe('AuthContextProvider', () => {
       username: 'test@example.com',
     };
     msalMock.msalInstance.getAllAccounts.mockReturnValue([account]);
-    msalMock.msalInstance.logoutPopup.mockImplementation(async () => {
+    msalMock.msalInstance.logoutRedirect.mockImplementation(async () => {
+      // Same short-circuit pattern as loginRedirect: emit the event the
+      // real redirect-back would deliver.
       msalMock.__emitMsalEvent({ eventType: EventType.LOGOUT_SUCCESS });
     });
 
@@ -154,7 +158,7 @@ describe('AuthContextProvider', () => {
     expect(screen.getByTestId('status').textContent).toBe('authenticated');
 
     await user.click(screen.getByRole('button', { name: 'sign-out' }));
-    expect(msalMock.msalInstance.logoutPopup).toHaveBeenCalled();
+    expect(msalMock.msalInstance.logoutRedirect).toHaveBeenCalled();
     expect(screen.getByTestId('status').textContent).toBe('unauthenticated');
   });
 
