@@ -19,22 +19,34 @@ const Probe = () => {
   const scope = useChatScope();
   return (
     <>
-      <p data-testid="doc-ids">{scope.state.documentIds.join(',') || 'none'}</p>
-      <p data-testid="folder-ids">{scope.state.folderIds.join(',') || 'none'}</p>
-      <button type="button" onClick={() => scope.toggleDocument('doc-1')}>
-        toggle-doc
-      </button>
-      <button type="button" onClick={() => scope.toggleFolder('folder-1')}>
-        toggle-folder
+      <p data-testid="doc-ids">
+        {scope.state.documents.map((doc) => doc.documentId).join(',') || 'none'}
+      </p>
+      <p data-testid="folder-ids">
+        {scope.state.folders.map((folder) => folder.folderId).join(',') || 'none'}
+      </p>
+      <p data-testid="doc-names">
+        {scope.state.documents.map((doc) => doc.fileName).join(',') || 'none'}
+      </p>
+      <p data-testid="folder-paths">
+        {scope.state.folders.map((folder) => folder.path).join(',') || 'none'}
+      </p>
+      <button
+        type="button"
+        onClick={() =>
+          scope.setSelection(
+            [{ documentId: 'doc-x', fileName: 'X.pdf' }],
+            [{ folderId: 'folder-x', folderName: 'Reports', path: 'root/Reports' }],
+          )
+        }
+      >
+        set-selection
       </button>
       <button type="button" onClick={() => scope.removeDocument('doc-x')}>
         remove-doc
       </button>
       <button type="button" onClick={() => scope.removeFolder('folder-x')}>
         remove-folder
-      </button>
-      <button type="button" onClick={() => scope.setSelection(['doc-x', 'doc-y'], ['folder-x'])}>
-        set-selection
       </button>
       <button type="button" onClick={() => scope.clear()}>
         clear
@@ -57,24 +69,7 @@ describe('<ChatScopeProvider> / useChatScope', () => {
     expect(screen.getByTestId('folder-ids').textContent).toBe('none');
   });
 
-  it('toggles document and folder ids in and out of scope', async () => {
-    const user = userEvent.setup();
-    render(
-      <ChatScopeProvider>
-        <Probe />
-      </ChatScopeProvider>,
-    );
-    await user.click(screen.getByText('toggle-doc'));
-    await user.click(screen.getByText('toggle-folder'));
-    expect(screen.getByTestId('doc-ids').textContent).toBe('doc-1');
-    expect(screen.getByTestId('folder-ids').textContent).toBe('folder-1');
-
-    await user.click(screen.getByText('toggle-doc'));
-    expect(screen.getByTestId('doc-ids').textContent).toBe('none');
-    expect(screen.getByTestId('folder-ids').textContent).toBe('folder-1');
-  });
-
-  it('removes targeted ids and clears all', async () => {
+  it('mirrors the indexer-supplied selection (with names + paths)', async () => {
     const user = userEvent.setup();
     render(
       <ChatScopeProvider>
@@ -82,11 +77,23 @@ describe('<ChatScopeProvider> / useChatScope', () => {
       </ChatScopeProvider>,
     );
     await user.click(screen.getByText('set-selection'));
-    expect(screen.getByTestId('doc-ids').textContent).toBe('doc-x,doc-y');
+    expect(screen.getByTestId('doc-ids').textContent).toBe('doc-x');
+    expect(screen.getByTestId('doc-names').textContent).toBe('X.pdf');
     expect(screen.getByTestId('folder-ids').textContent).toBe('folder-x');
+    expect(screen.getByTestId('folder-paths').textContent).toBe('root/Reports');
+  });
 
+  it('removes targeted ids locally and clears all', async () => {
+    const user = userEvent.setup();
+    render(
+      <ChatScopeProvider>
+        <Probe />
+      </ChatScopeProvider>,
+    );
+    await user.click(screen.getByText('set-selection'));
     await user.click(screen.getByText('remove-folder'));
     expect(screen.getByTestId('folder-ids').textContent).toBe('none');
+    expect(screen.getByTestId('doc-ids').textContent).toBe('doc-x');
 
     await user.click(screen.getByText('clear'));
     expect(screen.getByTestId('doc-ids').textContent).toBe('none');
@@ -99,9 +106,10 @@ describe('<ChatScopeProvider> / useChatScope', () => {
         <Probe />
       </ChatScopeProvider>,
     );
-    await user.click(screen.getByText('toggle-doc'));
+    await user.click(screen.getByText('set-selection'));
     await user.click(screen.getByText('reset'));
     expect(screen.getByTestId('doc-ids').textContent).toBe('none');
+    expect(screen.getByTestId('folder-ids').textContent).toBe('none');
   });
 
   it('throws a clear error when the hook is used outside the provider', () => {

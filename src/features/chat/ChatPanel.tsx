@@ -12,7 +12,7 @@
  */
 
 import { Sparkle, X } from '@phosphor-icons/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { IconButton } from '../../components/IconButton';
@@ -79,13 +79,21 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
       ),
   };
 
+  const sseSelection = useMemo(
+    () => ({
+      documentIds: chatScope.state.documents.map((doc) => doc.documentId),
+      folderIds: chatScope.state.folders.map((folder) => folder.folderId),
+    }),
+    [chatScope.state.documents, chatScope.state.folders],
+  );
+
   const sse = useSseChat(
     session
       ? {
           state: session.state,
           dispatch: session.dispatch,
           callbacks: sseCallbacks,
-          selection: chatScope.state,
+          selection: sseSelection,
         }
       : {
           // No active collection — return a no-op chat client so the hooks

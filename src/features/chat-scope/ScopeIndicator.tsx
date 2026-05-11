@@ -1,24 +1,26 @@
 /**
  * Scope indicator strip — rendered above the chat message list when the user
  * has narrowed the next send to specific documents or folders. Shows one chip
- * per selected id; clicking the × removes that id; "Clear all" empties the
- * whole selection.
+ * per selected item; clicking the × removes that item *locally* (the chip
+ * disappears, the next chat send omits that id); "Clear all" empties the
+ * whole local view.
  *
- * Filenames are pulled from `useDocumentMetadata` per documentId — TanStack
- * Query dedupes/caches across the viewer, so the chip lookups are usually
- * cache hits. When the metadata hasn't loaded yet, the chip shows a short
- * placeholder rather than the raw guid (better than leaking ids into the UI).
+ * Source of truth is the indexer's `selection/changed` event (PR #3 / 3cf5603),
+ * which now ships `fileName`, `folderName`, and a slash-joined ancestor `path`
+ * directly in the payload. We render straight from chat-scope state — no
+ * `useDocumentMetadata` round-trip for chip labels.
  *
- * Folders: today the consumer has no folder-metadata hook (folder lists live
- * inside the indexer remote). Until the indexer's selection event ships
- * `folderName` (see docs/architecture/indexer-handoff-selection-event.md),
- * folder chips render as "Folder N" placeholders.
+ * Known divergence (documented in the slice doc): chat-side `×` and "Clear all"
+ * are local overrides — they do NOT push back to the indexer's selection UI.
+ * The next `selection/changed` mutation re-syncs the chip rack to the
+ * indexer's authoritative set. Acceptable v1; revisit if user feedback warrants
+ * an imperative back-channel.
  */
 
 import { X } from '@phosphor-icons/react';
 import { memo } from 'react';
 
-import { useDocumentMetadata } from '../viewer';
+import type { SelectionDocument, SelectionFolder } from '@shared/types';
 
 import styles from './ScopeIndicator.module.scss';
 import type { ChatScopeState } from './chatScopeReducer';
@@ -31,23 +33,21 @@ interface Props {
 }
 
 interface DocumentChipProps {
-  documentId: string;
+  document: SelectionDocument;
   onRemove: (id: string) => void;
 }
 
-const DocumentChipBase = ({ documentId, onRemove }: DocumentChipProps) => {
-  const { data } = useDocumentMetadata(documentId);
-  const label = data?.fileName ?? 'Document';
+const DocumentChipBase = ({ document, onRemove }: DocumentChipProps) => {
   return (
     <li className={styles.chip}>
-      <span className={styles.chipLabel} title={data?.fileName ?? documentId}>
-        {label}
+      <span className={styles.chipLabel} title={document.fileName}>
+        {document.fileName}
       </span>
       <button
         type="button"
         className={styles.chipRemove}
-        aria-label={`Remove ${label} from chat scope`}
-        onClick={() => onRemove(documentId)}
+        aria-label={`Remove ${document.fileName} from chat scope`}
+        onClick={() => onRemove(document.documentId)}
       >
         <X size={14} weight="regular" aria-hidden="true" focusable="false" />
       </button>
@@ -60,23 +60,21 @@ DocumentChipBase.displayName = 'DocumentChip';
 const DocumentChip = memo(DocumentChipBase);
 
 interface FolderChipProps {
-  folderId: string;
-  ordinal: number;
+  folder: SelectionFolder;
   onRemove: (id: string) => void;
 }
 
-const FolderChipBase = ({ folderId, ordinal, onRemove }: FolderChipProps) => {
-  const label = `Folder ${ordinal}`;
+const FolderChipBase = ({ folder, onRemove }: FolderChipProps) => {
   return (
     <li className={styles.chip}>
-      <span className={styles.chipLabel} title={folderId}>
-        {label}
+      <span className={styles.chipLabel} title={folder.path}>
+        {folder.folderName}
       </span>
       <button
         type="button"
         className={styles.chipRemove}
-        aria-label={`Remove ${label} from chat scope`}
-        onClick={() => onRemove(folderId)}
+        aria-label={`Remove folder ${folder.folderName} from chat scope`}
+        onClick={() => onRemove(folder.folderId)}
       >
         <X size={14} weight="regular" aria-hidden="true" focusable="false" />
       </button>
@@ -87,7 +85,7 @@ FolderChipBase.displayName = 'FolderChip';
 const FolderChip = memo(FolderChipBase);
 
 export const ScopeIndicator = ({ state, onRemoveDocument, onRemoveFolder, onClearAll }: Props) => {
-  const total = state.documentIds.length + state.folderIds.length;
+  const total = state.documents.length + state.folders.length;
   if (total === 0) return null;
   return (
     <section className={styles.indicator} aria-label="Chat scope">
@@ -95,16 +93,11 @@ export const ScopeIndicator = ({ state, onRemoveDocument, onRemoveFolder, onClea
         Scoped to {total}
       </span>
       <ul className={styles.chipList}>
-        {state.documentIds.map((documentId) => (
-          <DocumentChip key={documentId} documentId={documentId} onRemove={onRemoveDocument} />
+        {state.documents.map((document) => (
+          <DocumentChip key={document.documentId} document={document} onRemove={onRemoveDocument} />
         ))}
-        {state.folderIds.map((folderId, index) => (
-          <FolderChip
-            key={folderId}
-            folderId={folderId}
-            ordinal={index + 1}
-            onRemove={onRemoveFolder}
-          />
+        {state.folders.map((folder) => (
+          <FolderChip key={folder.folderId} folder={folder} onRemove={onRemoveFolder} />
         ))}
       </ul>
       <button type="button" className={styles.clearAll} onClick={onClearAll}>

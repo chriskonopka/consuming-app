@@ -106,16 +106,17 @@ const IndexerMount = () => {
       },
       onDocumentSelected: (event) => {
         // Open the viewer at page 1 with no citation highlight (api-contracts.md §1.3).
+        // Chat-scope changes arrive via `selection/changed` only — keeping
+        // viewer-open separate from chat-scope per the API team's intent.
         openViewer(event.documentId, 1, null);
-        // Transitional bridge: until the indexer ships a dedicated
-        // `selection/changed` event (see
-        // docs/architecture/indexer-handoff-selection-event.md), the only
-        // signal the consumer has for "user wants to scope chat to this doc"
-        // is the existing document-click event. Toggle the doc in the
-        // chat-scope state so a second click on the same doc removes it.
-        // Swap this for `chatScope.setSelection(documentIds, folderIds)`
-        // when the new event lands; do NOT layer both — they would race.
-        chatScope.toggleDocument(event.documentId);
+      },
+      onSelectionChanged: (event) => {
+        // Indexer is the source of truth for chat-scope selection (PR #3 /
+        // 3cf5603). Both arrays are always present; empty means "clear", which
+        // also covers collection switch (indexer emits empty arrays for the
+        // new set id). The reducer dedupes + caps at SEND_MESSAGE_SELECTION_MAX
+        // defensively even though the indexer already enforces the cap.
+        chatScope.setSelection(event.documents, event.folders);
       },
       onAuthExpired: () => {
         expireAuth();

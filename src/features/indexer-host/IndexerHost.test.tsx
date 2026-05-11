@@ -40,7 +40,12 @@ const renderWith = (initialPath: string) => {
         <p data-testid="auth-status">{state.status}</p>
         <p data-testid="path">{location.pathname}</p>
         <p data-testid="viewer-open-id">{viewer.state.open?.documentId ?? 'none'}</p>
-        <p data-testid="scope-doc-ids">{scope.state.documentIds.join(',') || 'none'}</p>
+        <p data-testid="scope-doc-ids">
+          {scope.state.documents.map((doc) => doc.documentId).join(',') || 'none'}
+        </p>
+        <p data-testid="scope-folder-paths">
+          {scope.state.folders.map((folder) => folder.path).join(',') || 'none'}
+        </p>
       </>
     );
   };
@@ -193,28 +198,42 @@ describe('<IndexerHost>', () => {
     // forward navigation.
   });
 
-  // Transitional bridge until the indexer ships its `selection/changed`
-  // event — `document/selected` toggles the doc in chat scope so the next
-  // chat send is narrowed to it. Will be replaced by a SET_SELECTION listener.
-  it('toggles the doc in chat scope when document/selected fires', async () => {
+  // `selection/changed` is the indexer's authoritative chat-scope signal
+  // (indexer PR #3 / 3cf5603). The host mirrors the payload into chat-scope
+  // state via SET_SELECTION; chip labels render straight from the
+  // event-supplied names and paths.
+  it('mirrors selection/changed payload into chat scope (documents + folders + paths)', async () => {
     const user = userEvent.setup();
     renderWith('/');
     await screen.findByTestId('indexer-stub');
 
     await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
     await act(async () => {
-      await user.click(screen.getByRole('button', { name: 'Open stub document' }));
+      await user.click(screen.getByRole('button', { name: 'Emit selection/changed (populated)' }));
     });
     expect(screen.getByTestId('scope-doc-ids').textContent).toBe('stub-doc-1');
-
-    // Second click toggles the doc out of scope.
-    await act(async () => {
-      await user.click(screen.getByRole('button', { name: 'Open stub document' }));
-    });
-    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('none');
+    expect(screen.getByTestId('scope-folder-paths').textContent).toBe('root/Reports');
   });
 
-  it('resets chat scope when the active collection changes', async () => {
+  it('clears chat scope when selection/changed arrives with empty arrays', async () => {
+    const user = userEvent.setup();
+    renderWith('/');
+    await screen.findByTestId('indexer-stub');
+
+    await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Emit selection/changed (populated)' }));
+    });
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('stub-doc-1');
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Emit selection/changed (cleared)' }));
+    });
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('none');
+    expect(screen.getByTestId('scope-folder-paths').textContent).toBe('none');
+  });
+
+  it('does not auto-scope chat when document/selected fires (clicks only open viewer)', async () => {
     const user = userEvent.setup();
     renderWith('/');
     await screen.findByTestId('indexer-stub');
@@ -223,10 +242,9 @@ describe('<IndexerHost>', () => {
     await act(async () => {
       await user.click(screen.getByRole('button', { name: 'Open stub document' }));
     });
-    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('stub-doc-1');
-
-    // Switching to a different collection clears stale doc scope.
-    await user.click(screen.getByRole('button', { name: 'Stub collection 2' }));
+    expect(screen.getByTestId('viewer-open-id').textContent).toBe('stub-doc-1');
+    // The transitional bridge that toggled chat scope on doc click is removed.
+    // Scope only mutates via selection/changed now.
     expect(screen.getByTestId('scope-doc-ids').textContent).toBe('none');
   });
 
@@ -238,9 +256,6 @@ describe('<IndexerHost>', () => {
     await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
     expect(screen.getByTestId('active-collection').textContent).toBe('stub-collection-1');
 
-    // The stub's "Open stub document" button is enabled once a collection is
-    // active; clicking it dispatches document/selected through the host's
-    // handler. Slice 4: the handler opens the viewer at page 1 with no highlight.
     await act(async () => {
       await user.click(screen.getByRole('button', { name: 'Open stub document' }));
     });

@@ -75,6 +75,26 @@ const IndexerAppStub = forwardRef<IndexerHandle, IndexerAppProps>(
       });
     };
 
+    const handleEmitSelectionChanged = (): void => {
+      if (!activeId) return;
+      onEvent?.({
+        type: 'selection/changed',
+        documentSetId: activeId,
+        documents: [{ documentId: STUB_DOCUMENT_ID, fileName: 'stub.pdf' }],
+        folders: [{ folderId: 'stub-folder-1', folderName: 'Reports', path: 'root/Reports' }],
+      });
+    };
+
+    const handleEmitSelectionCleared = (): void => {
+      if (!activeId) return;
+      onEvent?.({
+        type: 'selection/changed',
+        documentSetId: activeId,
+        documents: [],
+        folders: [],
+      });
+    };
+
     const handleAuthExpired = (): void => {
       onEvent?.({ type: 'auth/expired' });
     };
@@ -123,6 +143,12 @@ const IndexerAppStub = forwardRef<IndexerHandle, IndexerAppProps>(
         </button>
         <button type="button" onClick={handleListChanged}>
           Trigger collection/list-changed
+        </button>
+        <button type="button" onClick={handleEmitSelectionChanged} disabled={!activeId}>
+          Emit selection/changed (populated)
+        </button>
+        <button type="button" onClick={handleEmitSelectionCleared} disabled={!activeId}>
+          Emit selection/changed (cleared)
         </button>
       </div>
     );
