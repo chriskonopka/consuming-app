@@ -56,18 +56,32 @@ const callbacksFor = (): UseSseChatCallbacks & {
   pre: jest.Mock;
   mid: jest.Mock;
   tooLong: jest.Mock;
+  selectionTooLarge: jest.Mock;
 } => {
   const pre = jest.fn();
   const mid = jest.fn();
   const tooLong = jest.fn();
-  return { onPreStreamError: pre, onStreamError: mid, onContentTooLong: tooLong, pre, mid, tooLong };
+  const selectionTooLarge = jest.fn();
+  return {
+    onPreStreamError: pre,
+    onStreamError: mid,
+    onContentTooLong: tooLong,
+    onSelectionTooLarge: selectionTooLarge,
+    pre,
+    mid,
+    tooLong,
+    selectionTooLarge,
+  };
 };
 
-const renderSseHook = (callbacks: UseSseChatCallbacks) =>
+const renderSseHook = (
+  callbacks: UseSseChatCallbacks,
+  selection?: { documentIds: string[]; folderIds: string[] },
+) =>
   renderHook(
     () => {
       const [state, dispatch] = useReducer(chatReducer, 'col-1', buildInitialChatSession);
-      const sse = useSseChat({ state, dispatch, callbacks });
+      const sse = useSseChat({ state, dispatch, callbacks, selection });
       return { sse, state, dispatch };
     },
     { wrapper: ({ children }) => wrap(children) },
@@ -180,12 +194,13 @@ describe('useSseChat', () => {
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
       )
-      .mockImplementationOnce((_, init?: RequestInit) =>
-        new Promise<Response>((_, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            reject(new DOMException('aborted', 'AbortError'));
-          });
-        }),
+      .mockImplementationOnce(
+        (_, init?: RequestInit) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            });
+          }),
       );
 
     const cbs = callbacksFor();
@@ -236,5 +251,54 @@ describe('useSseChat', () => {
     await waitFor(() => {
       expect(cbs.pre).not.toHaveBeenCalled();
     });
+  });
+
+  it('forwards selection arrays in the messages body and omits when empty', async () => {
+    fetchMock
+      // conversation create
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversationId: 'c-1',
+            documentSetId: 'col-1',
+            userId: 'u',
+            title: '',
+            messageCount: 0,
+            lastMessageAt: null,
+            createdAt: '',
+            updatedAt: '',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      // messages SSE
+      .mockResolvedValueOnce(sseResponse(['event: token\ndata: {"text":"hi"}\n\n']));
+
+    const cbs = callbacksFor();
+    const { result } = renderSseHook(cbs, {
+      documentIds: ['doc-a', 'doc-b'],
+      folderIds: [],
+    });
+
+    await act(async () => {
+      await result.current.sse.send('question');
+    });
+
+    const messagesCall = fetchMock.mock.calls.find(([url]: [string]) => url.endsWith('/messages'));
+    expect(messagesCall).toBeDefined();
+    const body = JSON.parse(messagesCall![1].body as string);
+    expect(body.documentIds).toEqual(['doc-a', 'doc-b']);
+    expect(body.folderIds).toBeUndefined();
+  });
+
+  it('rejects sends when selection arrays exceed the per-array cap', async () => {
+    const cbs = callbacksFor();
+    const overflow = Array.from({ length: 65 }, (_, idx) => `doc-${idx}`);
+    const { result } = renderSseHook(cbs, { documentIds: overflow, folderIds: [] });
+    await act(async () => {
+      await result.current.sse.send('hi');
+    });
+    expect(cbs.selectionTooLarge).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

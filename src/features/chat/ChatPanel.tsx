@@ -18,6 +18,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { IconButton } from '../../components/IconButton';
 import { Panel } from '../../components/Panel';
 import { Splitter } from '../../components/Splitter';
+import { ScopeIndicator, useChatScope } from '../chat-scope';
 import { useActiveCollection } from '../indexer-host';
 import { useApiClient } from '../../hooks/useApiClient';
 import { appInsights } from '../../appInsights';
@@ -60,6 +61,7 @@ const trackSharedCollectionChat = (documentSetId: string) => {
 export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
   const activeCollection = useActiveCollection();
   const documentSetId = activeCollection?.documentSetId ?? null;
+  const chatScope = useChatScope();
 
   const session = useChatSession(documentSetId);
   const history = useChatHistory(documentSetId, session?.state.conversationId ?? null);
@@ -70,13 +72,21 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
   const sseCallbacks: UseSseChatCallbacks = {
     onPreStreamError: setErrorNotice,
     onStreamError: setErrorNotice,
-    onContentTooLong: () =>
-      setErrorNotice('Message too long — keep under 64,000 characters.'),
+    onContentTooLong: () => setErrorNotice('Message too long — keep under 64,000 characters.'),
+    onSelectionTooLarge: () =>
+      setErrorNotice(
+        'Too many documents or folders selected for this message — keep each under 64.',
+      ),
   };
 
   const sse = useSseChat(
     session
-      ? { state: session.state, dispatch: session.dispatch, callbacks: sseCallbacks }
+      ? {
+          state: session.state,
+          dispatch: session.dispatch,
+          callbacks: sseCallbacks,
+          selection: chatScope.state,
+        }
       : {
           // No active collection — return a no-op chat client so the hooks
           // contract stays stable. The composer is disabled in this branch.
@@ -139,7 +149,14 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
   const hasHistory = history.messages.length > 0 || session?.state.streaming != null;
 
   return (
-    <Panel id={PANEL_ID} side="left" open={open} widthPx={widthPx} onClose={onClose} ariaLabel="Chat">
+    <Panel
+      id={PANEL_ID}
+      side="left"
+      open={open}
+      widthPx={widthPx}
+      onClose={onClose}
+      ariaLabel="Chat"
+    >
       <header className={styles.header}>
         <div className={styles.titleRow}>
           <Sparkle size={20} weight="regular" aria-hidden="true" focusable="false" />
@@ -159,6 +176,13 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
           <IconButton icon={X} ariaLabel="Close chat panel" onClick={onClose} />
         </div>
       </header>
+
+      <ScopeIndicator
+        state={chatScope.state}
+        onRemoveDocument={chatScope.removeDocument}
+        onRemoveFolder={chatScope.removeFolder}
+        onClearAll={chatScope.clear}
+      />
 
       <div className={styles.body}>
         {!documentSetId ? (

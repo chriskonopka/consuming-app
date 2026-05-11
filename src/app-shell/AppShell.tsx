@@ -18,20 +18,14 @@
 import { ChatCircleText } from '@phosphor-icons/react';
 import { useCallback } from 'react';
 
-import {
-  DEFAULT_CHAT_PANEL_WIDTH_PX,
-  DEFAULT_VIEWER_PANEL_WIDTH_PX,
-} from '@shared/types';
+import { DEFAULT_CHAT_PANEL_WIDTH_PX, DEFAULT_VIEWER_PANEL_WIDTH_PX } from '@shared/types';
 
 import { useTrackPageView } from '../telemetry/useTrackPageView';
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { IconButton } from '../components/IconButton';
-import {
-  CHAT_PANEL_MAX_PX,
-  CHAT_PANEL_MIN_PX,
-  ChatPanel,
-} from '../features/chat';
+import { CHAT_PANEL_MAX_PX, CHAT_PANEL_MIN_PX, ChatPanel } from '../features/chat';
+import { ChatScopeProvider } from '../features/chat-scope';
 import { IndexerHost } from '../features/indexer-host';
 import {
   DocumentViewer,
@@ -89,14 +83,11 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
     [layoutDispatch],
   );
 
-  const closeChat = useCallback(
-    () => {
-      if (layoutState.chatPanel.open) {
-        layoutDispatch({ type: 'TOGGLE_CHAT_PANEL' });
-      }
-    },
-    [layoutDispatch, layoutState.chatPanel.open],
-  );
+  const closeChat = useCallback(() => {
+    if (layoutState.chatPanel.open) {
+      layoutDispatch({ type: 'TOGGLE_CHAT_PANEL' });
+    }
+  }, [layoutDispatch, layoutState.chatPanel.open]);
 
   const resizeChat = useCallback(
     (widthPx: number) => layoutDispatch({ type: 'SET_CHAT_PANEL_WIDTH', widthPx }),
@@ -104,8 +95,7 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
   );
 
   const resizeViewer = useCallback(
-    (widthPx: number) =>
-      layoutDispatch({ type: 'SET_VIEWER_PANEL_WIDTH', widthPx }),
+    (widthPx: number) => layoutDispatch({ type: 'SET_VIEWER_PANEL_WIDTH', widthPx }),
     [layoutDispatch],
   );
 
@@ -145,11 +135,7 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
               onClose={closeChat}
               onResize={resizeChat}
             />
-            <DocumentViewer
-              open={viewerOpen}
-              widthPx={viewerWidthPx}
-              onResize={resizeViewer}
-            />
+            <DocumentViewer open={viewerOpen} widthPx={viewerWidthPx} onResize={resizeViewer} />
           </IndexerHost>
         </main>
       </div>
@@ -162,9 +148,11 @@ export const AppShell = () => {
 
   return (
     <ErrorBoundary>
-      <ViewerProvider>
-        <AppShellInner layoutState={layoutState} layoutDispatch={layoutDispatch} />
-      </ViewerProvider>
+      <ChatScopeProvider>
+        <ViewerProvider>
+          <AppShellInner layoutState={layoutState} layoutDispatch={layoutDispatch} />
+        </ViewerProvider>
+      </ChatScopeProvider>
     </ErrorBoundary>
   );
 };

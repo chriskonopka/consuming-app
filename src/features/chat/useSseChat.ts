@@ -27,6 +27,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, type Dispatch } from 'react';
 
 import {
+  SEND_MESSAGE_SELECTION_MAX,
   V1_CHAT_LLM_PROVIDER,
   type ChatSession,
   type CitationData,
@@ -68,6 +69,12 @@ export interface UseSseChatCallbacks {
    * surface a humanised "too long" notice without dispatching anything.
    */
   onContentTooLong: () => void;
+  /**
+   * Called when documentIds/folderIds exceed the per-array cap (defense in
+   * depth — the chat-scope reducer also caps adds). The server would respond
+   * with 400 ValidationFailed; this avoids the round-trip.
+   */
+  onSelectionTooLarge: () => void;
 }
 
 export interface UseSseChatReturn {
@@ -80,6 +87,14 @@ interface UseSseChatArgs {
   state: ChatSession;
   dispatch: Dispatch<ChatAction>;
   callbacks: UseSseChatCallbacks;
+  /**
+   * Selection-scoped retrieval (added 2026-05-11 per SindhuraG-lab/GlobalAPI#1).
+   * Empty arrays / undefined send no narrowing → whole DocumentSet retrieval.
+   */
+  selection?: {
+    documentIds: string[];
+    folderIds: string[];
+  };
 }
 
 const utf8ByteLength = (input: string): number => new TextEncoder().encode(input).length;
@@ -108,6 +123,7 @@ export const useSseChat = ({
   state,
   dispatch,
   callbacks,
+  selection,
 }: UseSseChatArgs): UseSseChatReturn => {
   const api = useApiClient();
   const queryClient = useQueryClient();
@@ -121,6 +137,11 @@ export const useSseChat = ({
 
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
+
+  // Selection is read at send time, not closed-over at hook-creation, so a
+  // selection change made between renders is reflected in the next send.
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
 
   const ensureConversation = useCallback(
     async (documentSetId: string): Promise<string> => {
@@ -141,6 +162,15 @@ export const useSseChat = ({
       if (trimmed.length === 0) return;
       if (utf8ByteLength(trimmed) > CONTENT_MAX_BYTES) {
         callbacksRef.current.onContentTooLong();
+        return;
+      }
+      const currentSelection = selectionRef.current;
+      if (
+        currentSelection &&
+        (currentSelection.documentIds.length > SEND_MESSAGE_SELECTION_MAX ||
+          currentSelection.folderIds.length > SEND_MESSAGE_SELECTION_MAX)
+      ) {
+        callbacksRef.current.onSelectionTooLarge();
         return;
       }
       const documentSetId = stateRef.current.documentSetId;
@@ -169,6 +199,12 @@ export const useSseChat = ({
       });
 
       const body: SendMessageRequest = { content: trimmed, llmProvider: V1_CHAT_LLM_PROVIDER };
+      if (currentSelection?.documentIds.length) {
+        body.documentIds = currentSelection.documentIds;
+      }
+      if (currentSelection?.folderIds.length) {
+        body.folderIds = currentSelection.folderIds;
+      }
 
       let response: Response;
       try {
@@ -228,7 +264,9 @@ export const useSseChat = ({
           } else if (event.event === 'error') {
             endedByErrorEvent = true;
             const parsed = decodeJson<StreamErrorEvent>(event.data);
-            callbacksRef.current.onStreamError(parsed?.message ?? 'Stream interrupted — try again.');
+            callbacksRef.current.onStreamError(
+              parsed?.message ?? 'Stream interrupted — try again.',
+            );
             dispatch({ type: 'STREAM_FAILED' });
             break;
           }

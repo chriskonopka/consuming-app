@@ -19,6 +19,7 @@ import { useReducer, type ReactNode } from 'react';
 import type { IndexerHandle, IndexerHostState } from '@shared/types';
 
 import { MsalAppProvider } from '../../auth/MsalAppProvider';
+import { ChatScopeProvider } from '../chat-scope';
 import { IndexerHostContextProvider } from '../indexer-host/IndexerHostContext';
 import {
   buildInitialIndexerHostState,
@@ -56,13 +57,15 @@ const Providers = ({
   return (
     <MsalAppProvider>
       <QueryClientProvider client={queryClient}>
-        <ViewerProvider>
-          <IndexerHostContextProvider state={state} dispatch={dispatch}>
-            {/* indexerRef is never read by chat directly in slice 3; assigned but unused. */}
-            <input type="hidden" ref={() => indexerRef} />
-            {children}
-          </IndexerHostContextProvider>
-        </ViewerProvider>
+        <ChatScopeProvider>
+          <ViewerProvider>
+            <IndexerHostContextProvider state={state} dispatch={dispatch}>
+              {/* indexerRef is never read by chat directly in slice 3; assigned but unused. */}
+              <input type="hidden" ref={() => indexerRef} />
+              {children}
+            </IndexerHostContextProvider>
+          </ViewerProvider>
+        </ChatScopeProvider>
       </QueryClientProvider>
     </MsalAppProvider>
   );
@@ -98,7 +101,9 @@ const sseResponse = (chunks: string[]): Response => {
 const conversationListResponse = (existing: { id: string } | null) =>
   new Response(
     JSON.stringify({
-      items: existing ? [{ conversationId: existing.id, title: '', messageCount: 0, lastMessageAt: null }] : [],
+      items: existing
+        ? [{ conversationId: existing.id, title: '', messageCount: 0, lastMessageAt: null }]
+        : [],
       totalCount: existing ? 1 : 0,
       page: 1,
       pageSize: 1,
@@ -158,7 +163,8 @@ describe('ChatPanel', () => {
   it('streams tokens and citations on send (happy path)', async () => {
     fetchMock
       .mockResolvedValueOnce(conversationListResponse(null)) // conversations/list -> empty
-      .mockResolvedValueOnce( // POST /conversations -> creates conv
+      .mockResolvedValueOnce(
+        // POST /conversations -> creates conv
         new Response(
           JSON.stringify({
             conversationId: 'c-1',
@@ -180,26 +186,26 @@ describe('ChatPanel', () => {
           'event: citation\ndata: {"marker":1,"page":2,"x":10,"y":10,"w":50,"h":10,"fileName":"src.pdf"}\n\n',
         ]),
       )
-      .mockResolvedValueOnce(historyResponse([
-        {
-          id: 'srv-1',
-          role: 'user',
-          content: 'Q',
-          timestamp: '',
-          llmProvider: null,
-          citations: [],
-        },
-        {
-          id: 'srv-2',
-          role: 'assistant',
-          content: 'Hello world [cite:1]',
-          timestamp: '',
-          llmProvider: 'Claude',
-          citations: [
-            { marker: 1, page: 2, x: 10, y: 10, w: 50, h: 10, fileName: 'src.pdf' },
-          ],
-        },
-      ]));
+      .mockResolvedValueOnce(
+        historyResponse([
+          {
+            id: 'srv-1',
+            role: 'user',
+            content: 'Q',
+            timestamp: '',
+            llmProvider: null,
+            citations: [],
+          },
+          {
+            id: 'srv-2',
+            role: 'assistant',
+            content: 'Hello world [cite:1]',
+            timestamp: '',
+            llmProvider: 'Claude',
+            citations: [{ marker: 1, page: 2, x: 10, y: 10, w: 50, h: 10, fileName: 'src.pdf' }],
+          },
+        ]),
+      );
 
     const user = userEvent.setup();
     render(
@@ -254,9 +260,7 @@ describe('ChatPanel', () => {
     await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Q');
     await user.click(screen.getByRole('button', { name: 'Send message' }));
 
-    expect(
-      await screen.findByText('AI service unavailable, try again'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('AI service unavailable, try again')).toBeInTheDocument();
   });
 
   it('shows mid-stream error event as a non-blocking notice', async () => {
@@ -318,9 +322,8 @@ describe('ChatPanel', () => {
   });
 
   it('passes axe with history loaded', async () => {
-    fetchMock
-      .mockResolvedValueOnce(conversationListResponse({ id: 'c-9' }))
-      .mockResolvedValueOnce(historyResponse([
+    fetchMock.mockResolvedValueOnce(conversationListResponse({ id: 'c-9' })).mockResolvedValueOnce(
+      historyResponse([
         {
           id: 'srv-1',
           role: 'user',
@@ -337,7 +340,8 @@ describe('ChatPanel', () => {
           llmProvider: 'Claude',
           citations: [],
         },
-      ]));
+      ]),
+    );
     const { container } = render(
       <Providers>
         <ChatPanel open widthPx={400} onClose={() => undefined} />
@@ -350,12 +354,18 @@ describe('ChatPanel', () => {
   it('Clear button opens confirmation dialog and confirms a delete', async () => {
     fetchMock
       .mockResolvedValueOnce(conversationListResponse({ id: 'c-9' }))
-      .mockResolvedValueOnce(historyResponse([
-        {
-          id: 'srv-2', role: 'assistant', content: 'Hello', timestamp: '',
-          llmProvider: 'Claude', citations: [],
-        },
-      ]))
+      .mockResolvedValueOnce(
+        historyResponse([
+          {
+            id: 'srv-2',
+            role: 'assistant',
+            content: 'Hello',
+            timestamp: '',
+            llmProvider: 'Claude',
+            citations: [],
+          },
+        ]),
+      )
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(conversationListResponse(null));
 

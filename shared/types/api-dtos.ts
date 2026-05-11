@@ -114,7 +114,20 @@ export interface DocumentMetadataResponse {
 export interface SendMessageRequest {
   content: string; // capped at 64 KB by the server
   llmProvider?: LlmProvider; // defaults to 'Claude' on the server
+  /**
+   * Optional selection-scoped retrieval. Null/undefined/empty arrays are
+   * equivalent to "no narrowing" (whole DocumentSet search — legacy behavior).
+   * Either array non-empty narrows hybrid search via OR of whitelists, ANDed
+   * with the document set. Per-array cap of 64 — API returns 400 ValidationFailed
+   * (`errors.documentIds` / `errors.folderIds`) above that. Added 2026-05-11
+   * per the API contract change in SindhuraG-lab/GlobalAPI#1 (commit 60ebdf9).
+   */
+  documentIds?: string[];
+  folderIds?: string[];
 }
+
+/** Per-array client-side cap matching the server's 400 boundary. */
+export const SEND_MESSAGE_SELECTION_MAX = 64;
 
 /** SSE event payloads — discriminated by event channel name, not by a `type` field. */
 

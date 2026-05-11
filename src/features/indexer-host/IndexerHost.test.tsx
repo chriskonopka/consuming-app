@@ -18,6 +18,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { MsalAppProvider } from '../../auth/MsalAppProvider';
+import { ChatScopeProvider, useChatScope } from '../chat-scope';
 import { ViewerProvider, useViewer } from '../viewer';
 import { IndexerHost } from './IndexerHost';
 import { useActiveCollection } from './IndexerHostContext';
@@ -32,16 +33,14 @@ const renderWith = (initialPath: string) => {
     const { state } = useAuth();
     const viewer = useViewer();
     const location = useLocation();
+    const scope = useChatScope();
     return (
       <>
-        <p data-testid="active-collection">
-          {collection?.documentSetId ?? 'none'}
-        </p>
+        <p data-testid="active-collection">{collection?.documentSetId ?? 'none'}</p>
         <p data-testid="auth-status">{state.status}</p>
         <p data-testid="path">{location.pathname}</p>
-        <p data-testid="viewer-open-id">
-          {viewer.state.open?.documentId ?? 'none'}
-        </p>
+        <p data-testid="viewer-open-id">{viewer.state.open?.documentId ?? 'none'}</p>
+        <p data-testid="scope-doc-ids">{scope.state.documentIds.join(',') || 'none'}</p>
       </>
     );
   };
@@ -49,18 +48,20 @@ const renderWith = (initialPath: string) => {
     <MemoryRouter initialEntries={[initialPath]}>
       <MsalAppProvider>
         <ThemeProvider>
-          <ViewerProvider>
-            <Routes>
-              <Route
-                path="*"
-                element={
-                  <IndexerHost>
-                    <Probe />
-                  </IndexerHost>
-                }
-              />
-            </Routes>
-          </ViewerProvider>
+          <ChatScopeProvider>
+            <ViewerProvider>
+              <Routes>
+                <Route
+                  path="*"
+                  element={
+                    <IndexerHost>
+                      <Probe />
+                    </IndexerHost>
+                  }
+                />
+              </Routes>
+            </ViewerProvider>
+          </ChatScopeProvider>
         </ThemeProvider>
       </MsalAppProvider>
     </MemoryRouter>,
@@ -86,6 +87,34 @@ describe('<IndexerHost>', () => {
     await screen.findByTestId('indexer-stub');
 
     await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
+    expect(screen.getByTestId('active-collection').textContent).toBe('stub-collection-1');
+    expect(screen.getByTestId('path').textContent).toBe('/c/stub-collection-1');
+  });
+
+  // Regression for main@88e3c38: a fully-resolved `collection/activated` must
+  // NOT cause the URL-reconciliation effect to fire `selectCollection(null)`
+  // on the indexer ref. The bug it guards against — the host's reducer
+  // dispatch (urgent priority) used to land before `pushCollection` (transition
+  // priority in react-router-dom v7); the sync effect ran in the intermediate
+  // render with stale-null `urlDocumentSetId` and dispatched a spurious
+  // `selectCollection(null)`, wiping the indexer's state and bouncing the user
+  // back to the collection list. The stub echoes `selectCollection(id)` back as
+  // a `collection/activated` event, so any spurious null-deselect would zero
+  // the stub's `Active collection:` text. Assert it persists across a flush.
+  it('does not bounce back to none after activating a collection', async () => {
+    const user = userEvent.setup();
+    renderWith('/');
+    const stub = await screen.findByTestId('indexer-stub');
+
+    await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
+    expect(stub).toHaveTextContent('Active collection: stub-collection-1');
+
+    // Flush any deferred / transition updates the URL effect may schedule.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(stub).toHaveTextContent('Active collection: stub-collection-1');
     expect(screen.getByTestId('active-collection').textContent).toBe('stub-collection-1');
     expect(screen.getByTestId('path').textContent).toBe('/c/stub-collection-1');
   });
@@ -162,6 +191,43 @@ describe('<IndexerHost>', () => {
     // Simulating browser-back via window.history is not supported by
     // MemoryRouter; E2E covers the real back-button. Here we only assert
     // forward navigation.
+  });
+
+  // Transitional bridge until the indexer ships its `selection/changed`
+  // event — `document/selected` toggles the doc in chat scope so the next
+  // chat send is narrowed to it. Will be replaced by a SET_SELECTION listener.
+  it('toggles the doc in chat scope when document/selected fires', async () => {
+    const user = userEvent.setup();
+    renderWith('/');
+    await screen.findByTestId('indexer-stub');
+
+    await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Open stub document' }));
+    });
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('stub-doc-1');
+
+    // Second click toggles the doc out of scope.
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Open stub document' }));
+    });
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('none');
+  });
+
+  it('resets chat scope when the active collection changes', async () => {
+    const user = userEvent.setup();
+    renderWith('/');
+    await screen.findByTestId('indexer-stub');
+
+    await user.click(screen.getByRole('button', { name: 'Stub collection 1' }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Open stub document' }));
+    });
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('stub-doc-1');
+
+    // Switching to a different collection clears stale doc scope.
+    await user.click(screen.getByRole('button', { name: 'Stub collection 2' }));
+    expect(screen.getByTestId('scope-doc-ids').textContent).toBe('none');
   });
 
   it('opens the viewer at page 1 when document/selected fires', async () => {

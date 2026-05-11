@@ -14,6 +14,7 @@
 import {
   Suspense,
   lazy,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -31,17 +32,12 @@ import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { config } from '../../config/env';
 import { useUrlState } from '../../hooks/useUrlState';
 import { useTheme } from '../../theme/useTheme';
+import { useChatScope } from '../chat-scope';
 import { useViewer } from '../viewer/ViewerContext';
 
-import {
-  IndexerHostContextProvider,
-  useIndexerHostState,
-} from './IndexerHostContext';
+import { IndexerHostContextProvider, useIndexerHostState } from './IndexerHostContext';
 import { routeIndexerEvent, type IndexerEventHandlers } from './eventRouter';
-import {
-  buildInitialIndexerHostState,
-  indexerHostReducer,
-} from './indexerHostReducer';
+import { buildInitialIndexerHostState, indexerHostReducer } from './indexerHostReducer';
 import { loadIndexerApp } from './loadIndexerApp';
 
 import styles from './IndexerHost.module.scss';
@@ -61,6 +57,7 @@ const IndexerMount = () => {
   const { expireAuth } = useAuth();
   const { documentSetId: urlDocumentSetId, pushCollection } = useUrlState();
   const { open: openViewer } = useViewer();
+  const chatScope = useChatScope();
 
   // Tracks the URL value the host last reconciled with the indexer. Starts
   // matching the URL because the reducer's `initialState.documentSetId` is
@@ -80,15 +77,28 @@ const IndexerMount = () => {
   const handlers = useMemo<IndexerEventHandlers>(
     () => ({
       onCollectionActivated: (event) => {
+        // Wrap both updates in a transition so they share the same priority
+        // lane and apply in a single render. Without this, the reducer dispatch
+        // (urgent) lands before pushCollection (transition priority in
+        // react-router-dom v7); the URL-reconciliation effect below then runs
+        // in the intermediate render and sees activeCollection populated while
+        // urlDocumentSetId is still stale-null, interprets that as "deselect",
+        // and calls selectCollection(null) on the indexer — wiping its state
+        // and bouncing the user back to the collection list. See main@88e3c38.
         const next = event.documentSetId
           ? { documentSetId: event.documentSetId, accessRole: event.accessRole ?? 'Owner' }
           : null;
-        dispatch({ type: 'COLLECTION_ACTIVATED', activeCollection: next });
         const target = event.documentSetId ?? null;
-        if (lastReconciledUrlIdRef.current !== target) {
-          lastReconciledUrlIdRef.current = target;
-          pushCollection(target);
-        }
+        startTransition(() => {
+          dispatch({ type: 'COLLECTION_ACTIVATED', activeCollection: next });
+          if (lastReconciledUrlIdRef.current !== target) {
+            lastReconciledUrlIdRef.current = target;
+            pushCollection(target);
+          }
+        });
+        // Chat scope is per-DocumentSet — a different collection's docs aren't
+        // valid retrieval scope, so any stale selection is cleared on switch.
+        chatScope.resetForCollectionChange();
       },
       onCollectionListChanged: () => {
         // No-op in v1 (per slice-plan.md). Handler exists so the contract
@@ -97,6 +107,15 @@ const IndexerMount = () => {
       onDocumentSelected: (event) => {
         // Open the viewer at page 1 with no citation highlight (api-contracts.md §1.3).
         openViewer(event.documentId, 1, null);
+        // Transitional bridge: until the indexer ships a dedicated
+        // `selection/changed` event (see
+        // docs/architecture/indexer-handoff-selection-event.md), the only
+        // signal the consumer has for "user wants to scope chat to this doc"
+        // is the existing document-click event. Toggle the doc in the
+        // chat-scope state so a second click on the same doc removes it.
+        // Swap this for `chatScope.setSelection(documentIds, folderIds)`
+        // when the new event lands; do NOT layer both — they would race.
+        chatScope.toggleDocument(event.documentId);
       },
       onAuthExpired: () => {
         expireAuth();
@@ -114,7 +133,7 @@ const IndexerMount = () => {
         }
       },
     }),
-    [dispatch, expireAuth, pushCollection, openViewer],
+    [dispatch, expireAuth, pushCollection, openViewer, chatScope],
   );
 
   const onEvent = useCallback(
