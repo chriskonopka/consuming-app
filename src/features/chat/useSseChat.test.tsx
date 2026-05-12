@@ -17,7 +17,7 @@ import { useReducer } from 'react';
 
 import { MsalAppProvider } from '../../auth/MsalAppProvider';
 
-import { buildInitialChatSession, chatReducer } from './chatReducer';
+import { buildInitialChatSession, chatReducer, type ChatAction } from './chatReducer';
 import { useSseChat, type UseSseChatCallbacks } from './useSseChat';
 
 const msalMock = jest.requireMock('../../auth/msalInstance');
@@ -248,6 +248,61 @@ describe('useSseChat', () => {
     });
     expect(cbs.pre).not.toHaveBeenCalled();
     expect(cbs.mid).not.toHaveBeenCalled();
+  });
+
+  it('treats event: text_chunk as a token (API contract drift)', async () => {
+    // The contract documents `event: token` for assistant text frames but the
+    // deployed API emits `event: text_chunk`. Without this branch in the
+    // client, every chunk was silently dropped — the optimistic user bubble
+    // appeared and then vanished on STREAM_ENDED with no assistant reply.
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversationId: 'c-1',
+            documentSetId: 'col-1',
+            userId: 'u',
+            title: '',
+            messageCount: 0,
+            lastMessageAt: null,
+            createdAt: '',
+            updatedAt: '',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        sseResponse([
+          'event: text_chunk\ndata: {"text":"Hello"}\n\n',
+          'event: text_chunk\ndata: {"text":" world"}\n\n',
+        ]),
+      );
+
+    const dispatched: ChatAction[] = [];
+    const cbs = callbacksFor();
+    const { result } = renderHook(
+      () => {
+        const [state, baseDispatch] = useReducer(chatReducer, 'col-1', buildInitialChatSession);
+        const dispatch = (action: ChatAction) => {
+          dispatched.push(action);
+          baseDispatch(action);
+        };
+        const sse = useSseChat({ state, dispatch, callbacks: cbs });
+        return { sse };
+      },
+      { wrapper: ({ children }) => wrap(children) },
+    );
+
+    await act(async () => {
+      await result.current.sse.send('hi');
+    });
+
+    const tokens = dispatched.filter((action) => action.type === 'STREAM_TOKEN');
+    expect(tokens).toEqual([
+      { type: 'STREAM_TOKEN', text: 'Hello' },
+      { type: 'STREAM_TOKEN', text: ' world' },
+    ]);
+    expect(cbs.pre).not.toHaveBeenCalled();
   });
 
   it('streams tokens and citations and ends cleanly', async () => {
