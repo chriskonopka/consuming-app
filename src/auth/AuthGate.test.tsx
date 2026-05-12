@@ -84,10 +84,13 @@ describe('AuthGate', () => {
   it('disables the button while authenticating', async () => {
     const user = userEvent.setup();
     let resolveLogin: () => void = () => {};
-    msalMock.msalInstance.loginPopup.mockImplementation(
+    // Production calls loginRedirect (popup flow was retired 2026-05-11 — see
+    // auth/AuthContext.tsx header). The mock yields a pending promise so we
+    // can assert the "Signing in…" disabled state before the auth resolves.
+    msalMock.msalInstance.loginRedirect.mockImplementation(
       () =>
         new Promise<unknown>((resolve) => {
-          resolveLogin = () => resolve({});
+          resolveLogin = () => resolve(undefined);
         }),
     );
 

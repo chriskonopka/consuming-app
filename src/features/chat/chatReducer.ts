@@ -24,6 +24,7 @@ export type ChatAction =
   | {
       type: 'STREAM_STARTED';
       userMessageId: string;
+      userMessageText: string;
       conversationId: string;
       abortController: AbortController;
       now: number;
@@ -70,6 +71,7 @@ export const chatReducer = (state: ChatSession, action: ChatAction): ChatSession
         composerText: '',
         streaming: {
           userMessageId: action.userMessageId,
+          userMessageText: action.userMessageText,
           assistantBuffer: '',
           citations: [],
           abortController: action.abortController,

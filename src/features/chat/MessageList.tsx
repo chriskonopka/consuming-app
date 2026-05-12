@@ -104,7 +104,13 @@ export const MessageList = ({ messages, streaming, emptyStateLabel }: Props) => 
       {streaming && (
         <>
           <li className={`${styles.message} ${styles.user}`}>
-            <div className={styles.bubble}>{streaming.userMessageId && /* optimistic placeholder */ null}</div>
+            {/*
+              Optimistic user-message bubble. Renders the trimmed text the
+              user just sent so it stays visible during streaming — without
+              this the bubble was empty until STREAM_ENDED triggered a
+              history re-fetch with the persisted message.
+            */}
+            <div className={styles.bubble}>{streaming.userMessageText}</div>
           </li>
           <li className={`${styles.message} ${styles.assistant}`}>
             <div className={styles.bubble} aria-live="polite">

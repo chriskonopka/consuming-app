@@ -6,10 +6,13 @@
  * because the gating expression `process.env.MSAL_E2E_STUB === 'true'`
  * folds to `false` when the env var isn't set.
  *
- * Behaviour: loginPopup synchronously creates a deterministic fake account
- * and emits LOGIN_SUCCESS; logoutPopup clears it and emits LOGOUT_SUCCESS.
- * Token acquisition returns a fixed string. Enough for the sign-in /
- * sign-out / theme-persist flow the slice-1 e2e covers.
+ * Behaviour: loginPopup / loginRedirect synchronously create a deterministic
+ * fake account and emit LOGIN_SUCCESS; logoutPopup / logoutRedirect clear
+ * it and emit LOGOUT_SUCCESS. Token acquisition returns a fixed string.
+ * Redirect variants do NOT actually navigate — they short-circuit to the
+ * same in-memory state mutation as the popup variants so jest/playwright
+ * specs do not need to simulate a real top-level browser navigation. Enough
+ * for the sign-in / sign-out / theme-persist flow the slice-1 e2e covers.
  */
 
 import {
@@ -125,13 +128,27 @@ export const e2eMsalStub: PublicClientApplication = {
     emit(EventType.LOGIN_SUCCESS, { account: STUB_ACCOUNT });
     return stubResult(STUB_ACCOUNT);
   },
-  loginRedirect: async () => undefined,
+  loginRedirect: async () => {
+    // Production calls this; the stub short-circuits the redirect-back step
+    // so the same LOGIN_SUCCESS event the real redirect-handler would fire
+    // is emitted synchronously, letting AuthContext's event handler flip
+    // state to AUTHENTICATED without a page reload in tests.
+    state.activeAccount = STUB_ACCOUNT;
+    persistActive(STUB_ACCOUNT);
+    emit(EventType.LOGIN_SUCCESS, { account: STUB_ACCOUNT });
+  },
   logoutPopup: async (_req?: EndSessionPopupRequest) => {
     state.activeAccount = null;
     persistActive(null);
     emit(EventType.LOGOUT_SUCCESS);
   },
-  logoutRedirect: async () => undefined,
+  logoutRedirect: async () => {
+    // Mirror loginRedirect: in production this navigates; in the stub we
+    // emit LOGOUT_SUCCESS synchronously so the same AuthContext path runs.
+    state.activeAccount = null;
+    persistActive(null);
+    emit(EventType.LOGOUT_SUCCESS);
+  },
   logout: async () => undefined,
   acquireTokenSilent: async (_req: SilentRequest) =>
     stubResult(state.activeAccount ?? STUB_ACCOUNT),

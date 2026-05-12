@@ -5,6 +5,14 @@
   gap: 0.75rem;
   padding: 1rem;
   overflow-y: auto;
+  // Citation tooltips are `position: absolute` with a translateX that places
+  // them outside their inline parent (intentional — they pop above the
+  // marker on hover). They contribute to the message list's `scrollWidth`,
+  // which combined with `overflow-y: auto`'s implicit `overflow-x: auto`
+  // (CSS spec — when one axis is non-visible, the other becomes auto)
+  // would surface a horizontal scrollbar inside the chat panel. Explicitly
+  // clipping the cross-axis prevents that without breaking text wrapping.
+  overflow-x: hidden;
   flex: 1;
 }
 

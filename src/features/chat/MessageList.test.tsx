@@ -87,6 +87,7 @@ describe('MessageList', () => {
         messages={messages}
         streaming={{
           userMessageId: 'u',
+          userMessageText: 'tell me about NY',
           assistantBuffer: 'New York [cite:1]…',
           citations: [citation],
           abortController: new AbortController(),

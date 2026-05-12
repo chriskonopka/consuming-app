@@ -21,7 +21,28 @@ export type IndexerHostAction =
 export const buildInitialIndexerHostState = (
   initialState: IndexerInitialState,
 ): IndexerHostState => ({
-  activeCollection: null,
+  // Seed activeCollection from the URL-derived initialState. When the page
+  // loads at `/c/<documentSetId>`, the indexer is born inside that
+  // collection via the same `initialState` prop and does not re-emit
+  // `collection/activated` (it's already there from its POV). Without this
+  // seeding the consumer's host state would stay at `activeCollection: null`
+  // forever and the chat panel would keep showing "Open a collection to
+  // start chatting" with the input disabled, even though the indexer is
+  // clearly rendering the active collection's documents. The accessRole is
+  // assumed Owner because the URL alone does not carry role info — the
+  // indexer/API will correct it via `collection/activated` if the caller is
+  // a Shared user (the role only affects telemetry tagging today, not
+  // access control, which is enforced server-side regardless).
+  //
+  // Note: in practice MSAL's `loginRedirect` flow also bounces the user back
+  // to `/` (not the original deep-link), so the URL is empty on first mount
+  // even when the user *meant* to land at `/c/<id>`. The URL-watching effect
+  // in `IndexerHost` is the second half of the seed and catches the case
+  // where the indexer (or any other code) pushes the URL to `/c/<id>` after
+  // mount via raw `history.pushState`.
+  activeCollection: initialState.documentSetId
+    ? { documentSetId: initialState.documentSetId, accessRole: 'Owner' }
+    : null,
   initialState,
   remountKey: 0,
 });

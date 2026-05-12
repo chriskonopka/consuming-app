@@ -74,6 +74,50 @@ const IndexerMount = () => {
     indexerRef.current?.selectCollection(target);
   }, [urlDocumentSetId, indexerRef]);
 
+  // The federated indexer can change the URL via raw `window.history.pushState`
+  // (or its own internal router), bypassing react-router-dom.
+  // `useMatch('/c/:documentSetId')` only updates on react-router's own
+  // navigations and the browser's native `popstate` event, so a direct
+  // pushState leaves `urlDocumentSetId` stale-null forever and
+  // `activeCollection` never gets seeded — leaving the chat panel disabled
+  // and the input greyed out even though a collection is clearly active.
+  //
+  // This effect watches `window.location.pathname` directly via popstate plus
+  // a 250ms polling fallback (cheap — one regex match + two ref reads on each
+  // tick), and dispatches `COLLECTION_ACTIVATED` when the `/c/<id>` segment
+  // changes. Refs hold cross-tick state so the effect mounts once and never
+  // re-runs (avoiding interval churn).
+  //
+  // The accessRole is assumed Owner because the URL alone does not carry
+  // role info — the indexer/API will correct it via `collection/activated`
+  // if the caller is a Shared user (telemetry-only field today).
+  const lastUrlSyncTargetRef = useRef<string | null>(null);
+  const activeCollectionDocSetIdRef = useRef<string | null>(
+    state.activeCollection?.documentSetId ?? null,
+  );
+  activeCollectionDocSetIdRef.current = state.activeCollection?.documentSetId ?? null;
+  useEffect(() => {
+    const COLLECTION_PATH_RX = /^\/c\/([^/?#]+)/;
+    const sync = () => {
+      const match = window.location.pathname.match(COLLECTION_PATH_RX);
+      const target = match?.[1] ? decodeURIComponent(match[1]) : null;
+      if (target === lastUrlSyncTargetRef.current) return;
+      lastUrlSyncTargetRef.current = target;
+      if (target === activeCollectionDocSetIdRef.current) return;
+      dispatch({
+        type: 'COLLECTION_ACTIVATED',
+        activeCollection: target ? { documentSetId: target, accessRole: 'Owner' } : null,
+      });
+    };
+    sync();
+    window.addEventListener('popstate', sync);
+    const intervalId = window.setInterval(sync, 250);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.clearInterval(intervalId);
+    };
+  }, [dispatch]);
+
   const handlers = useMemo<IndexerEventHandlers>(
     () => ({
       onCollectionActivated: (event) => {

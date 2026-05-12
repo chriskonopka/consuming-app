@@ -4,13 +4,18 @@
  * (slice 2+) — never two different functions, never two MSAL instances
  * (CLAUDE.md §"Token uniformity").
  *
- * Tries `acquireTokenSilent`. Falls back to `acquireTokenPopup` on
- * `InteractionRequiredAuthError`. Throws on hard failure — callers handle by
- * surfacing AuthState='expired' (the indexer will emit auth/expired on its
- * side; the host's expireAuth() also runs from useApiClient on a 401).
+ * Tries `acquireTokenSilent`. On `InteractionRequiredAuthError` (or any other
+ * silent-acquisition failure), throws the error rather than falling back to
+ * `acquireTokenPopup` — popup-based token refresh is unreliable in modern
+ * Chrome because the popup→parent message round-trip fails when
+ * third-party-cookie isolation is on (the same bug that drove the
+ * loginPopup→loginRedirect switch in AuthContext on 2026-05-11). Callers
+ * handle by surfacing `AuthState='expired'`: useApiClient calls
+ * `expireAuth()` on a 401, the indexer emits `auth/expired`, the AuthGate
+ * shows "Your session expired" and the user re-authenticates via the
+ * top-level redirect flow.
  */
 
-import { InteractionRequiredAuthError } from '@azure/msal-browser';
 import { useCallback } from 'react';
 
 import type { GetAccessToken } from '@shared/types';
@@ -24,17 +29,9 @@ export const useAccessToken = (): GetAccessToken =>
     if (!account) {
       throw new Error('no_active_account');
     }
-    try {
-      const result = await msalInstance.acquireTokenSilent({
-        account,
-        scopes: API_SCOPES,
-      });
-      return result.accessToken;
-    } catch (err) {
-      if (err instanceof InteractionRequiredAuthError) {
-        const result = await msalInstance.acquireTokenPopup({ scopes: API_SCOPES });
-        return result.accessToken;
-      }
-      throw err;
-    }
+    const result = await msalInstance.acquireTokenSilent({
+      account,
+      scopes: API_SCOPES,
+    });
+    return result.accessToken;
   }, []);

@@ -4,20 +4,26 @@ import {
 } from './indexerHostReducer';
 
 describe('indexerHostReducer', () => {
-  it('builds initial state from a deep-link snapshot', () => {
+  it('builds initial state from a deep-link snapshot and seeds activeCollection from the URL', () => {
+    // Deep-link to /c/<id> means a collection IS active — the indexer is born
+    // inside it via the same initialState prop and does not re-emit
+    // collection/activated. The reducer seeds activeCollection from the URL
+    // so the chat panel does not stay disabled on a fresh page load.
     const state = buildInitialIndexerHostState({
       documentSetId: 'abc',
       folderId: 'folder-1',
       documentId: 'doc-1',
     });
     expect(state).toEqual({
-      activeCollection: null,
+      activeCollection: { documentSetId: 'abc', accessRole: 'Owner' },
       initialState: { documentSetId: 'abc', folderId: 'folder-1', documentId: 'doc-1' },
       remountKey: 0,
     });
   });
 
-  it('builds initial state from an empty snapshot', () => {
+  it('builds initial state from an empty snapshot with no activeCollection', () => {
+    // No documentSetId in the URL → no collection active → chat panel still
+    // shows its empty state until the user opens one.
     expect(buildInitialIndexerHostState({})).toEqual({
       activeCollection: null,
       initialState: {},

@@ -29,19 +29,22 @@ describe('useAccessToken', () => {
     });
     expect(msalMock.msalInstance.acquireTokenSilent).toHaveBeenCalled();
     expect(msalMock.msalInstance.acquireTokenPopup).not.toHaveBeenCalled();
+    expect(msalMock.msalInstance.acquireTokenRedirect).not.toHaveBeenCalled();
   });
 
-  it('falls back to popup on InteractionRequiredAuthError', async () => {
+  it('throws on InteractionRequiredAuthError without falling back to popup', async () => {
+    // Caller (useApiClient on 401) translates this into expireAuth() — see
+    // auth/useAccessToken.ts header. Popup fallback was removed 2026-05-11
+    // alongside the loginPopup→loginRedirect switch in AuthContext because
+    // popup-based MSAL hangs in modern Chrome (third-party-cookie isolation).
     msalMock.msalInstance.getActiveAccount.mockReturnValue({ homeAccountId: 'oid' });
     msalMock.msalInstance.acquireTokenSilent.mockRejectedValue(
       new InteractionRequiredAuthError('interaction_required'),
     );
     const { result } = renderHook(() => useAccessToken());
-    await act(async () => {
-      const token = await result.current();
-      expect(token).toBe('mock-popup-token');
-    });
-    expect(msalMock.msalInstance.acquireTokenPopup).toHaveBeenCalled();
+    await expect(result.current()).rejects.toBeInstanceOf(InteractionRequiredAuthError);
+    expect(msalMock.msalInstance.acquireTokenPopup).not.toHaveBeenCalled();
+    expect(msalMock.msalInstance.acquireTokenRedirect).not.toHaveBeenCalled();
   });
 
   it('rethrows non-interaction errors', async () => {
@@ -50,6 +53,7 @@ describe('useAccessToken', () => {
     const { result } = renderHook(() => useAccessToken());
     await expect(result.current()).rejects.toThrow('network');
     expect(msalMock.msalInstance.acquireTokenPopup).not.toHaveBeenCalled();
+    expect(msalMock.msalInstance.acquireTokenRedirect).not.toHaveBeenCalled();
   });
 
   it('returns the same function reference between renders (stable identity for prop passing)', () => {
