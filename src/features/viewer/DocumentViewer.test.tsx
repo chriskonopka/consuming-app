@@ -169,8 +169,8 @@ describe('DocumentViewer', () => {
     await waitFor(() => expect(screen.getByText('5 pages')).toBeInTheDocument());
   });
 
-  it('shows an error banner when the PDF fetch fails', async () => {
-    apiRaw.mockResolvedValue(new Response('not found', { status: 404 }));
+  it('shows an error banner when the PDF fetch fails with a non-404 status', async () => {
+    apiRaw.mockResolvedValue(new Response('boom', { status: 500 }));
     render(
       <Harness open documentId="missing.pdf">
         <DocumentViewer open widthPx={600} />
@@ -183,6 +183,29 @@ describe('DocumentViewer', () => {
         ),
       ).toBeInTheDocument(),
     );
+  });
+
+  it('shows a "no longer available" banner instead of a generic error on 404', async () => {
+    // Self-heal: 404 on /documents/{id}/content means the document was
+    // deleted (admin action, tenant wipe). Surface a distinct notice rather
+    // than the generic "try closing and reopening it" message.
+    apiRaw.mockResolvedValue(new Response('not found', { status: 404 }));
+    render(
+      <Harness open documentId="deleted.pdf">
+        <DocumentViewer open widthPx={600} />
+      </Harness>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'This document is no longer available — it may have been removed.',
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText('Document unavailable.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Could not load this document. Try closing and reopening it.'),
+    ).toBeNull();
   });
 
   it('shows the "Locating citation" banner while a highlight is pending render', () => {

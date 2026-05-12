@@ -15,6 +15,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { useReducer, type ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 
 import type { IndexerHandle, IndexerHostState } from '@shared/types';
 
@@ -55,19 +56,21 @@ const Providers = ({
   });
   const indexerRef = { current: null as IndexerHandle | null };
   return (
-    <MsalAppProvider>
-      <QueryClientProvider client={queryClient}>
-        <ChatScopeProvider>
-          <ViewerProvider>
-            <IndexerHostContextProvider state={state} dispatch={dispatch}>
-              {/* indexerRef is never read by chat directly in slice 3; assigned but unused. */}
-              <input type="hidden" ref={() => indexerRef} />
-              {children}
-            </IndexerHostContextProvider>
-          </ViewerProvider>
-        </ChatScopeProvider>
-      </QueryClientProvider>
-    </MsalAppProvider>
+    <MemoryRouter initialEntries={[documentSetId ? `/c/${documentSetId}` : '/']}>
+      <MsalAppProvider>
+        <QueryClientProvider client={queryClient}>
+          <ChatScopeProvider>
+            <ViewerProvider>
+              <IndexerHostContextProvider state={state} dispatch={dispatch}>
+                {/* indexerRef is never read by chat directly in slice 3; assigned but unused. */}
+                <input type="hidden" ref={() => indexerRef} />
+                {children}
+              </IndexerHostContextProvider>
+            </ViewerProvider>
+          </ChatScopeProvider>
+        </QueryClientProvider>
+      </MsalAppProvider>
+    </MemoryRouter>
   );
 };
 

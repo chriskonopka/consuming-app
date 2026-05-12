@@ -3,3 +3,4 @@ export {
   useActiveCollection,
   useIndexerRef,
 } from './IndexerHostContext';
+export { useClearActiveCollection } from './useClearActiveCollection';
