@@ -75,6 +75,15 @@ export interface UseSseChatCallbacks {
    * with 400 ValidationFailed; this avoids the round-trip.
    */
   onSelectionTooLarge: () => void;
+  /**
+   * Called when the server returns 403/404 on a docset-scoped request before
+   * any SSE bytes — the cached `documentSetId` no longer corresponds to a
+   * live, accessible collection. Caller is expected to clear the active
+   * collection (`useClearActiveCollection`) and surface a "this collection is
+   * no longer available" notice. Suppresses the generic `onPreStreamError`
+   * for the same response so the user sees one focused message.
+   */
+  onStaleDocset?: () => void;
 }
 
 export interface UseSseChatReturn {
@@ -181,6 +190,14 @@ export const useSseChat = ({
         conversationId = await ensureConversation(documentSetId);
       } catch (error) {
         trackChatException(error, { stage: 'ensure-conversation' });
+        if (
+          error instanceof ApiError &&
+          (error.status === 403 || error.status === 404) &&
+          callbacksRef.current.onStaleDocset
+        ) {
+          callbacksRef.current.onStaleDocset();
+          return;
+        }
         const detail =
           error instanceof ApiError && error.problem?.detail
             ? error.problem.detail
@@ -241,8 +258,15 @@ export const useSseChat = ({
           status: String(response.status),
           slug: problem?.type ?? 'unknown',
         });
-        callbacksRef.current.onPreStreamError(detail);
         dispatch({ type: 'STREAM_FAILED' });
+        if (
+          (response.status === 403 || response.status === 404) &&
+          callbacksRef.current.onStaleDocset
+        ) {
+          callbacksRef.current.onStaleDocset();
+          return;
+        }
+        callbacksRef.current.onPreStreamError(detail);
         return;
       }
 

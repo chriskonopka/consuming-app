@@ -8,16 +8,32 @@
  * TanStack Query caches per (documentSetId, conversationId). After every
  * assistant response completes, `useSseChat` invalidates this query so the
  * next render reads the persisted thread.
+ *
+ * Stale-state self-heal: if the API returns 404 we fire `onStaleConversation`
+ * once and swallow the error from the public surface — the cached
+ * `conversationId` is referring to a conversation that was deleted (admin
+ * action, test-tenant wipe, etc.). Callers drop the cached id and let the
+ * next message send lazy-create a fresh conversation. 403 on the docset is
+ * handled by `onStaleDocset` separately because the recovery is different
+ * (clear the active collection rather than just the conversation).
  */
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import type { ConversationHistoryResponse, LocalMessage } from '@shared/types';
 import { toLocalMessage } from '@shared/types';
 
-import { useApiClient } from '../../hooks/useApiClient';
+import { useApiClient, ApiError } from '../../hooks/useApiClient';
 
 import { chatQueryKeys } from './queryKeys';
+
+export interface ChatHistoryOptions {
+  /** Fired once when the history endpoint returns 404 (conversation gone). */
+  onStaleConversation?: () => void;
+  /** Fired once when the history endpoint returns 403 (docset access lost). */
+  onStaleDocset?: () => void;
+}
 
 export interface ChatHistoryResult {
   messages: ReadonlyArray<LocalMessage>;
@@ -28,6 +44,7 @@ export interface ChatHistoryResult {
 export const useChatHistory = (
   documentSetId: string | null,
   conversationId: string | null,
+  options: ChatHistoryOptions = {},
 ): ChatHistoryResult => {
   const api = useApiClient();
   const enabled = documentSetId !== null && conversationId !== null;
@@ -46,11 +63,30 @@ export const useChatHistory = (
       ),
   });
 
+  const { onStaleConversation, onStaleDocset } = options;
+  const apiError = query.error instanceof ApiError ? query.error : null;
+  const isStaleConversation = apiError?.status === 404;
+  const isStaleDocset = apiError?.status === 403;
+
+  useEffect(() => {
+    if (isStaleConversation) onStaleConversation?.();
+  }, [isStaleConversation, onStaleConversation]);
+  useEffect(() => {
+    if (isStaleDocset) onStaleDocset?.();
+  }, [isStaleDocset, onStaleDocset]);
+
   const messages = query.data?.messages.map(toLocalMessage) ?? [];
 
   return {
     messages,
     isLoading: query.isLoading,
-    error: query.error instanceof Error ? query.error : null,
+    // Suppress 403/404 from the public error surface — the recovery callbacks
+    // own the response and the UI should not also show a generic error.
+    error:
+      apiError && (apiError.status === 403 || apiError.status === 404)
+        ? null
+        : query.error instanceof Error
+          ? query.error
+          : null,
   };
 };

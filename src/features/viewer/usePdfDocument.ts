@@ -23,7 +23,13 @@ import { ensurePdfjsConfigured } from './pdfjsConfig';
 
 interface UsePdfDocumentResult {
   pdf: PDFDocumentProxy | null;
-  status: 'idle' | 'loading' | 'ready' | 'error';
+  /**
+   * `not-found` is split from `error` so the viewer can self-heal on a stale
+   * documentId (deleted document, tenant wipe) by closing with a friendly
+   * banner rather than showing a generic "could not load" message and
+   * stranding the user in a broken view.
+   */
+  status: 'idle' | 'loading' | 'ready' | 'error' | 'not-found';
 }
 
 /** Imports pdf.js lazily so its weight only loads when the viewer is used. */
@@ -63,6 +69,12 @@ export const usePdfDocument = (documentId: string | null): UsePdfDocumentResult 
           { signal: abortController.signal },
         );
         if (cancelled) return;
+        if (response.status === 404) {
+          // Document is gone (deleted, tenant wipe, etc.). The viewer treats
+          // this distinctly from a generic load failure — see status enum.
+          setStatus('not-found');
+          return;
+        }
         if (!response.ok) {
           throw new Error(`pdf-content-fetch-failed-${response.status}`);
         }

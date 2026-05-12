@@ -19,7 +19,7 @@ import { IconButton } from '../../components/IconButton';
 import { Panel } from '../../components/Panel';
 import { Splitter } from '../../components/Splitter';
 import { ScopeIndicator, useChatScope } from '../chat-scope';
-import { useActiveCollection } from '../indexer-host';
+import { useActiveCollection, useClearActiveCollection } from '../indexer-host';
 import { useApiClient } from '../../hooks/useApiClient';
 import { appInsights } from '../../appInsights';
 
@@ -62,12 +62,37 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
   const activeCollection = useActiveCollection();
   const documentSetId = activeCollection?.documentSetId ?? null;
   const chatScope = useChatScope();
-
-  const session = useChatSession(documentSetId);
-  const history = useChatHistory(documentSetId, session?.state.conversationId ?? null);
+  const queryClient = useQueryClient();
+  const clearActiveCollection = useClearActiveCollection();
 
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+
+  // Recovery handlers for stale-ref API responses. Defined before
+  // `useChatSession` so both `useChatSession` (for /list 403/404) and
+  // `useChatHistory` (for /history 403/404) can wire them in.
+  const handleStaleDocset = useCallback(() => {
+    setErrorNotice(
+      'This collection is no longer available — please pick another from the list.',
+    );
+    clearActiveCollection();
+  }, [clearActiveCollection]);
+
+  const session = useChatSession(documentSetId, { onStaleDocset: handleStaleDocset });
+
+  const handleStaleConversation = useCallback(() => {
+    if (!session || !documentSetId) return;
+    // Drop the bad conversationId; useSseChat will lazy-create a fresh one on
+    // the next send. Refresh /list in the background so the cached value also
+    // updates.
+    session.dispatch({ type: 'CONVERSATION_RESOLVED', conversationId: null });
+    void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversation(documentSetId) });
+  }, [session, documentSetId, queryClient]);
+
+  const history = useChatHistory(documentSetId, session?.state.conversationId ?? null, {
+    onStaleConversation: handleStaleConversation,
+    onStaleDocset: handleStaleDocset,
+  });
 
   const sseCallbacks: UseSseChatCallbacks = {
     onPreStreamError: setErrorNotice,
@@ -77,6 +102,7 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
       setErrorNotice(
         'Too many documents or folders selected for this message — keep each under 64.',
       ),
+    onStaleDocset: handleStaleDocset,
   };
 
   const sseSelection = useMemo(
@@ -106,7 +132,6 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
 
   const statusRow = useStatusRow(session?.state ?? null, session?.dispatch ?? null);
 
-  const queryClient = useQueryClient();
   const api = useApiClient();
   const clearMutation = useMutation({
     mutationFn: async () => {

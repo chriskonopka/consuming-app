@@ -135,6 +135,16 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
       </div>
     ) : null;
 
+  // 404 self-heal: the document was deleted (admin action, tenant wipe, etc.)
+  // Surface a clear notice in place of the canvas so the user understands the
+  // cited source is gone rather than seeing a generic load error.
+  const notFoundBanner =
+    pdf.status === 'not-found' ? (
+      <div className={styles.bannerWarning} role="status" aria-live="polite">
+        This document is no longer available — it may have been removed.
+      </div>
+    ) : null;
+
   return (
     <Panel
       id={PANEL_ID}
@@ -156,10 +166,15 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
         {renderingBanner}
         {driftBanner}
         {errorBanner}
+        {notFoundBanner}
 
         {documentId === null ? (
           <div className={styles.empty} role="status" aria-live="polite">
             <p>No document open.</p>
+          </div>
+        ) : pdf.status === 'not-found' ? (
+          <div className={styles.empty} role="status" aria-live="polite">
+            <p>Document unavailable.</p>
           </div>
         ) : pdf.status === 'loading' ? (
           <div className={styles.loading}>

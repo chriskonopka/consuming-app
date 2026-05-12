@@ -21,7 +21,16 @@ import { useEffect, useReducer, type Dispatch } from 'react';
 import type { ChatSession } from '@shared/types';
 
 import { buildInitialChatSession, chatReducer, type ChatAction } from './chatReducer';
-import { useConversation } from './useConversation';
+import { useConversation, type UseConversationOptions } from './useConversation';
+
+export interface UseChatSessionOptions {
+  /**
+   * Forwarded to the underlying `useConversation`. Fires when
+   * /conversations/list returns 403/404 on the docset — caller typically
+   * clears the active collection via `useClearActiveCollection`.
+   */
+  onStaleDocset?: UseConversationOptions['onStaleDocset'];
+}
 
 export interface UseChatSessionReturn {
   state: ChatSession;
@@ -30,7 +39,10 @@ export interface UseChatSessionReturn {
   conversationError: Error | null;
 }
 
-export const useChatSession = (documentSetId: string | null): UseChatSessionReturn | null => {
+export const useChatSession = (
+  documentSetId: string | null,
+  options: UseChatSessionOptions = {},
+): UseChatSessionReturn | null => {
   const [state, dispatch] = useReducer(
     chatReducer,
     documentSetId ?? '',
@@ -45,7 +57,9 @@ export const useChatSession = (documentSetId: string | null): UseChatSessionRetu
     dispatch({ type: 'SET_DOCUMENT_SET', documentSetId });
   }, [documentSetId, state.documentSetId]);
 
-  const { conversationId, isLoading, error } = useConversation(documentSetId);
+  const { conversationId, isLoading, error } = useConversation(documentSetId, {
+    onStaleDocset: options.onStaleDocset,
+  });
 
   // Push the resolved conversation id into the reducer once. The reducer
   // ignores no-op transitions, so re-runs are safe.

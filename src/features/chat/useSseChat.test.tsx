@@ -52,25 +52,31 @@ const wrap = (children: ReactNode) => {
   );
 };
 
-const callbacksFor = (): UseSseChatCallbacks & {
+const callbacksFor = (
+  overrides: Partial<UseSseChatCallbacks> = {},
+): UseSseChatCallbacks & {
   pre: jest.Mock;
   mid: jest.Mock;
   tooLong: jest.Mock;
   selectionTooLarge: jest.Mock;
+  staleDocset: jest.Mock | undefined;
 } => {
   const pre = jest.fn();
   const mid = jest.fn();
   const tooLong = jest.fn();
   const selectionTooLarge = jest.fn();
+  const staleDocset = overrides.onStaleDocset as jest.Mock | undefined;
   return {
     onPreStreamError: pre,
     onStreamError: mid,
     onContentTooLong: tooLong,
     onSelectionTooLarge: selectionTooLarge,
+    onStaleDocset: staleDocset,
     pre,
     mid,
     tooLong,
     selectionTooLarge,
+    staleDocset,
   };
 };
 
@@ -153,6 +159,81 @@ describe('useSseChat', () => {
     expect((init as RequestInit).body).toBe('{}');
     const headers = (init as RequestInit).headers as Headers;
     expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
+  it('routes a 403 from ensure-conversation to onStaleDocset instead of onPreStreamError', async () => {
+    // Stale-state self-heal: when the cached documentSetId no longer
+    // corresponds to an accessible docset, the create-conversation POST
+    // 403s. The hook must invoke onStaleDocset (the caller clears the
+    // active collection) and suppress the generic onPreStreamError notice
+    // so the user sees one focused recovery message rather than two.
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          type: 'https://problems.api/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Access to the document set is denied.',
+        }),
+        {
+          status: 403,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      ),
+    );
+
+    const onStaleDocset = jest.fn();
+    const cbs = callbacksFor({ onStaleDocset });
+    const { result } = renderSseHook(cbs);
+    await act(async () => {
+      await result.current.sse.send('hello');
+    });
+
+    expect(onStaleDocset).toHaveBeenCalledTimes(1);
+    expect(cbs.pre).not.toHaveBeenCalled();
+  });
+
+  it('routes a 404 from the messages POST to onStaleDocset', async () => {
+    // ensureConversation succeeds (conversation existed in the cache or was
+    // just created), then the messages POST itself 404s because the docset
+    // has since been deleted.
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversationId: 'c-1',
+            documentSetId: 'col-1',
+            userId: 'u',
+            title: '',
+            messageCount: 0,
+            lastMessageAt: null,
+            createdAt: '',
+            updatedAt: '',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            type: 'https://problems.api/not-found',
+            title: 'Not Found',
+            status: 404,
+            detail: 'Document set not found.',
+          }),
+          { status: 404, headers: { 'content-type': 'application/problem+json' } },
+        ),
+      );
+
+    const onStaleDocset = jest.fn();
+    const cbs = callbacksFor({ onStaleDocset });
+    const { result } = renderSseHook(cbs);
+    await act(async () => {
+      await result.current.sse.send('hello');
+    });
+
+    expect(onStaleDocset).toHaveBeenCalledTimes(1);
+    expect(cbs.pre).not.toHaveBeenCalled();
   });
 
   it('surfaces ensure-conversation failure as pre-stream error', async () => {
