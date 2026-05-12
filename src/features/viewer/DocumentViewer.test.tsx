@@ -259,6 +259,31 @@ describe('DocumentViewer', () => {
     );
   });
 
+  it('scales the rendered page to fit the viewer panel width', async () => {
+    // widthPx=600 → fit = 600 (panel) - 24 (.body padding) - 20 (safety buffer) = 556
+    // mock natural page width at scale=1 is 800; expected canvas.width = 556
+    const { container } = render(
+      <Harness open documentId="master-agreement.pdf">
+        <DocumentViewer open widthPx={600} />
+      </Harness>,
+    );
+    await waitFor(() => expect(pdfjsTesting.mockPage.render).toHaveBeenCalled());
+    const canvas = container.querySelector('canvas');
+    expect(canvas?.width).toBe(556);
+  });
+
+  it('clamps the fit width when the panel is unusually narrow', async () => {
+    // widthPx=100 → fit would be 56, but the MIN_FIT_WIDTH_PX floor (120) wins.
+    const { container } = render(
+      <Harness open documentId="master-agreement.pdf">
+        <DocumentViewer open widthPx={100} />
+      </Harness>,
+    );
+    await waitFor(() => expect(pdfjsTesting.mockPage.render).toHaveBeenCalled());
+    const canvas = container.querySelector('canvas');
+    expect(canvas?.width).toBe(120);
+  });
+
   it('has no axe violations in the rendered state', async () => {
     const { container } = render(
       <Harness open documentId="master-agreement.pdf">
