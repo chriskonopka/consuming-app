@@ -123,6 +123,38 @@ describe('useSseChat', () => {
     expect(cbs.pre).not.toHaveBeenCalled();
   });
 
+  it('creates conversation with Content-Type: application/json and {} body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          conversationId: 'c-1',
+          documentSetId: 'col-1',
+          userId: 'u',
+          title: '',
+          messageCount: 0,
+          lastMessageAt: null,
+          createdAt: '',
+          updatedAt: '',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(sseResponse([]));
+
+    const cbs = callbacksFor();
+    const { result } = renderSseHook(cbs);
+    await act(async () => {
+      await result.current.sse.send('hello');
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/document-sets/col-1/conversations');
+    expect((init as RequestInit).method).toBe('POST');
+    expect((init as RequestInit).body).toBe('{}');
+    const headers = (init as RequestInit).headers as Headers;
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
   it('surfaces ensure-conversation failure as pre-stream error', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
