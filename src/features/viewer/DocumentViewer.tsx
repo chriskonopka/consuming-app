@@ -33,6 +33,14 @@ export const VIEWER_PANEL_MAX_PX = 960;
 
 const PANEL_ID = 'document-viewer-panel';
 
+// Matches the horizontal padding declared on `.body` (0.75rem * 2) plus a
+// safety buffer for the panel border + a potential vertical scrollbar gutter.
+// Together they keep the rendered page narrower than the viewport so the
+// horizontal scrollbar never appears for standard page sizes.
+const VIEWER_BODY_HORIZONTAL_PADDING_PX = 24;
+const VIEWER_FIT_SAFETY_BUFFER_PX = 20;
+const VIEWER_MIN_FIT_WIDTH_PX = 120;
+
 interface Props {
   open: boolean;
   widthPx: number;
@@ -62,9 +70,15 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
   const textLayerRef = useRef<HTMLDivElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
 
+  const fitToWidthPx = Math.max(
+    VIEWER_MIN_FIT_WIDTH_PX,
+    widthPx - VIEWER_BODY_HORIZONTAL_PADDING_PX - VIEWER_FIT_SAFETY_BUFFER_PX,
+  );
+
   const { viewport } = usePdfPage({
     pdf: pdf.pdf,
     page,
+    fitToWidthPx,
     canvasRef,
     textLayerRef,
     dispatch,

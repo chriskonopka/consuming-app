@@ -19,7 +19,13 @@ import type { Dispatch } from 'react';
 interface UsePdfPageOptions {
   pdf: PDFDocumentProxy | null;
   page: number;
+  /** Fallback render scale used when `fitToWidthPx` is null/undefined. */
   scale?: number;
+  /**
+   * If positive, the render scale is derived so the page's rendered width
+   * matches this many CSS pixels (fit-to-width). Takes precedence over `scale`.
+   */
+  fitToWidthPx?: number | null;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   textLayerRef: RefObject<HTMLDivElement | null>;
   /** Reducer dispatch — used to publish render-state transitions for the UI. */
@@ -38,6 +44,7 @@ export const usePdfPage = ({
   pdf,
   page,
   scale = DEFAULT_SCALE,
+  fitToWidthPx,
   canvasRef,
   textLayerRef,
   dispatch,
@@ -63,7 +70,12 @@ export const usePdfPage = ({
       try {
         const pdfPage = await pdf.getPage(page);
         if (cancelled) return;
-        const pageViewport = pdfPage.getViewport({ scale });
+        const naturalViewport = pdfPage.getViewport({ scale: 1 });
+        const effectiveScale =
+          fitToWidthPx && fitToWidthPx > 0 && naturalViewport.width > 0
+            ? fitToWidthPx / naturalViewport.width
+            : scale;
+        const pageViewport = pdfPage.getViewport({ scale: effectiveScale });
 
         const canvas = canvasRef.current;
         const textLayerNode = textLayerRef.current;
@@ -119,7 +131,7 @@ export const usePdfPage = ({
         // pdf.js throws if the task has already completed — observational.
       }
     };
-  }, [pdf, page, scale, canvasRef, textLayerRef, dispatch]);
+  }, [pdf, page, scale, fitToWidthPx, canvasRef, textLayerRef, dispatch]);
 
   return { viewport };
 };

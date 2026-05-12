@@ -149,6 +149,7 @@ export const useSseChat = ({
       if (existing) return existing;
       const created = await api.post<ConversationResponse>(
         `/document-sets/${documentSetId}/conversations`,
+        {},
       );
       dispatch({ type: 'CONVERSATION_RESOLVED', conversationId: created.conversationId });
       return created.conversationId;

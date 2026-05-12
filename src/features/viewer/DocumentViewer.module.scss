@@ -33,7 +33,11 @@
 .pageStage {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  // `safe center` keeps the page centered when it fits, but falls back to
+  // start-alignment if the rendered canvas is wider than the body — without
+  // this, the left edge of an oversized page is pushed to a negative offset
+  // and `overflow: auto` cannot scroll into it.
+  align-items: safe center;
   gap: 0.5rem;
   padding-bottom: 1rem;
 }
