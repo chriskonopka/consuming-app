@@ -78,11 +78,26 @@ export const chatScopeReducer = (
   action: ChatScopeAction,
 ): ChatScopeState => {
   switch (action.type) {
-    case 'SET_SELECTION':
-      return {
-        documents: dedupeAndCapDocuments(action.documents),
-        folders: dedupeAndCapFolders(action.folders),
-      };
+    case 'SET_SELECTION': {
+      const nextDocuments = dedupeAndCapDocuments(action.documents);
+      const nextFolders = dedupeAndCapFolders(action.folders);
+      // FIX (2026-05-11): No-op guard. The indexer emits `selection/changed`
+      // on internal renders even when the selection is unchanged — without
+      // this check every emission creates a new state object, the
+      // ChatScopeContext re-publishes, and every consumer (notably
+      // <ChatPanel>) re-renders. Observed at ~1,600 renders/sec under the
+      // diagnostic build deployed 2026-05-11. Compare by length + id-by-id
+      // (cheap; arrays are capped at 64 items by SEND_MESSAGE_SELECTION_MAX).
+      if (
+        nextDocuments.length === state.documents.length &&
+        nextFolders.length === state.folders.length &&
+        nextDocuments.every((doc, index) => doc.documentId === state.documents[index].documentId) &&
+        nextFolders.every((folder, index) => folder.folderId === state.folders[index].folderId)
+      ) {
+        return state;
+      }
+      return { documents: nextDocuments, folders: nextFolders };
+    }
     case 'REMOVE_DOCUMENT': {
       const index = state.documents.findIndex((doc) => doc.documentId === action.documentId);
       if (index === -1) return state;
