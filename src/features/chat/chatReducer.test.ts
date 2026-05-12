@@ -31,6 +31,7 @@ describe('chatReducer', () => {
       ...initial(),
       streaming: {
         userMessageId: 'u-1',
+        userMessageText: 'q',
         assistantBuffer: 'partial',
         citations: [],
         abortController: controller,
@@ -73,6 +74,7 @@ describe('chatReducer', () => {
       {
         type: 'STREAM_STARTED',
         userMessageId: 'u-1',
+        userMessageText: 'q',
         conversationId: 'c-1',
         abortController: controller,
         now: 1000,
@@ -90,6 +92,7 @@ describe('chatReducer', () => {
     let state = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c',
       abortController: controller,
       now: 0,
@@ -105,6 +108,7 @@ describe('chatReducer', () => {
     let state = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c',
       abortController: controller,
       now: 0,
@@ -118,6 +122,7 @@ describe('chatReducer', () => {
     const started = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c',
       abortController: controller,
       now: 0,
@@ -136,6 +141,7 @@ describe('chatReducer', () => {
     const started = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c',
       abortController: controller,
       now: 0,
@@ -150,6 +156,7 @@ describe('chatReducer', () => {
     const started = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c',
       abortController: controller,
       now: 0,
@@ -165,6 +172,7 @@ describe('chatReducer', () => {
     const state = chatReducer(initial(), {
       type: 'STREAM_STARTED',
       userMessageId: 'u',
+      userMessageText: 'hello',
       conversationId: 'c-1',
       abortController: controller,
       now: 0,

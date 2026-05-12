@@ -11,6 +11,7 @@ const buildStreamingSession = (overrides: Partial<ChatSession['streaming']> = {}
   composerText: '',
   streaming: {
     userMessageId: 'u',
+    userMessageText: 'q',
     assistantBuffer: '',
     citations: [],
     abortController: new AbortController(),

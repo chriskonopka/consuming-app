@@ -35,6 +35,13 @@ export type SimulatedPhase =
 export interface StreamingState {
   /** Optimistic ID for the user-side bubble — `crypto.randomUUID()`. */
   userMessageId: string;
+  /**
+   * The trimmed text the user just sent — rendered into the optimistic user
+   * bubble so the message stays visible during streaming. Without this the
+   * bubble would render empty until the assistant response completes and
+   * the history query re-fetches with the persisted user message.
+   */
+  userMessageText: string;
   /** Tokens accumulated in arrival order. */
   assistantBuffer: string;
   /** Citation events accumulated in arrival order. */

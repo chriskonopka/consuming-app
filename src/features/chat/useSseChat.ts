@@ -193,6 +193,7 @@ export const useSseChat = ({
       dispatch({
         type: 'STREAM_STARTED',
         userMessageId,
+        userMessageText: trimmed,
         conversationId,
         abortController,
         now: Date.now(),
