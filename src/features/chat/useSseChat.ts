@@ -257,7 +257,11 @@ export const useSseChat = ({
       try {
         let endedByErrorEvent = false;
         for await (const event of parseSse(stream, abortController.signal)) {
-          if (event.event === 'token') {
+          // Token frames: `frontend-api-contract.md` documents `event: token`
+          // but the deployed API emits `event: text_chunk`. Accept both so we
+          // work against the live API today and remain compatible if/when the
+          // server is corrected to match the contract.
+          if (event.event === 'token' || event.event === 'text_chunk') {
             const parsed = decodeJson<TokenChunkEvent>(event.data);
             if (parsed?.text) dispatch({ type: 'STREAM_TOKEN', text: parsed.text });
           } else if (event.event === 'citation') {
