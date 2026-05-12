@@ -13,6 +13,7 @@ const VERIFIED: Citation = {
   y: 20,
   w: 100,
   h: 12,
+  documentId: 'doc-master-agreement',
   fileName: 'master-agreement.pdf',
 };
 
@@ -23,6 +24,7 @@ const MISSING_COORDS: Citation = {
   y: 0,
   w: 0,
   h: 0,
+  documentId: 'doc-no-coords',
   fileName: 'no-coords.pdf',
 };
 

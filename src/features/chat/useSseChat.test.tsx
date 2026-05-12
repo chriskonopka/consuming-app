@@ -325,7 +325,7 @@ describe('useSseChat', () => {
       .mockResolvedValueOnce(
         sseResponse([
           'event: token\ndata: {"text":"Hello"}\n\n',
-          'event: citation\ndata: {"marker":1,"page":1,"x":1,"y":2,"w":3,"h":4,"fileName":"f.pdf"}\n\n',
+          'event: citation\ndata: {"marker":1,"page":1,"x":1,"y":2,"w":3,"h":4,"documentId":"doc-f","fileName":"f.pdf"}\n\n',
         ]),
       );
 

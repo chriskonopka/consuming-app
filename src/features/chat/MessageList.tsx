@@ -55,6 +55,7 @@ const renderContentWithCitations = (
         y: 0,
         w: 0,
         h: 0,
+        documentId: null,
         fileName: '',
       } satisfies CitationData);
     elements.push(

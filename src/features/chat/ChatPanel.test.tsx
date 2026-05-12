@@ -202,7 +202,7 @@ describe('ChatPanel', () => {
             content: 'Hello world [cite:1]',
             timestamp: '',
             llmProvider: 'Claude',
-            citations: [{ marker: 1, page: 2, x: 10, y: 10, w: 50, h: 10, fileName: 'src.pdf' }],
+            citations: [{ marker: 1, page: 2, x: 10, y: 10, w: 50, h: 10, documentId: 'doc-src', fileName: 'src.pdf' }],
           },
         ]),
       );
