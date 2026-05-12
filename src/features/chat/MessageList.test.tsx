@@ -40,7 +40,7 @@ const messages: ReadonlyArray<LocalMessage> = [
     timestamp: '2026-05-06T00:00:01Z',
     llmProvider: 'Claude',
     citations: [
-      { marker: 1, page: 4, x: 10, y: 10, w: 100, h: 20, fileName: 'msa.pdf' },
+      { marker: 1, page: 4, x: 10, y: 10, w: 100, h: 20, documentId: 'doc-msa', fileName: 'msa.pdf' },
     ],
     status: 'committed',
   },
@@ -80,7 +80,7 @@ describe('MessageList', () => {
 
   it('renders the streaming assistant bubble at the tail', () => {
     const citation: CitationData = {
-      marker: 1, page: 1, x: 10, y: 10, w: 100, h: 10, fileName: 'x.pdf',
+      marker: 1, page: 1, x: 10, y: 10, w: 100, h: 10, documentId: 'doc-x', fileName: 'x.pdf',
     };
     render(
       <MessageList

@@ -27,6 +27,7 @@ const CITATION: Citation = {
   y: 20,
   w: 100,
   h: 12,
+  documentId: 'doc-master-agreement',
   fileName: 'master-agreement.pdf',
 };
 
@@ -52,7 +53,7 @@ describe('useCitationClick', () => {
     act(() => result.current.click(CITATION));
 
     expect(result.current.viewer.state.open).toEqual({
-      documentId: 'master-agreement.pdf',
+      documentId: 'doc-master-agreement',
       page: 7,
       highlight: {
         page: 7,
@@ -69,6 +70,27 @@ describe('useCitationClick', () => {
   it('calls indexerRef.revealDocument with the resolved documentId', () => {
     const { result } = renderHook(() => useCitationClick(), { wrapper });
     act(() => result.current(CITATION));
-    expect(revealDocument).toHaveBeenCalledWith('master-agreement.pdf');
+    expect(revealDocument).toHaveBeenCalledWith('doc-master-agreement');
+  });
+
+  it('does nothing when the citation has no documentId (legacy history record)', () => {
+    // Persisted MessageCitation records written before the API added
+    // documentId deserialize as `documentId: null`. The viewer must NOT be
+    // opened in that case — `/documents/{id}/content` requires a GUID and
+    // would 404 with the file name.
+    const legacy: Citation = { ...CITATION, documentId: null };
+    const { result } = renderHook(
+      () => {
+        const click = useCitationClick();
+        const viewer = useViewer();
+        return { click, viewer };
+      },
+      { wrapper },
+    );
+
+    act(() => result.current.click(legacy));
+
+    expect(result.current.viewer.state.open).toBeNull();
+    expect(revealDocument).not.toHaveBeenCalled();
   });
 });

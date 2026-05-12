@@ -13,6 +13,7 @@ const buildCitation = (overrides: Partial<Citation> = {}): Citation => ({
   y: 10,
   w: 50,
   h: 10,
+  documentId: 'doc-file-a',
   fileName: 'file-a.pdf',
   ...overrides,
 });

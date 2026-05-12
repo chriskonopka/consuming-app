@@ -85,6 +85,15 @@ export interface CitationData {
   y: number;
   w: number;
   h: number;
+  /**
+   * Canonical document identifier. Always present on live SSE citation
+   * events. Nullable here because persisted MessageCitation records written
+   * before the documentId addition (2026-05-12) deserialize as `null`;
+   * citation clicks must handle that case and refuse to open the viewer
+   * rather than 404 against `/documents/{id}/content`.
+   */
+  documentId: string | null;
+  /** Display only — file names can collide across DocumentSets and are not unique. */
   fileName: string;
 }
 
