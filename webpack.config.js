@@ -1,4 +1,5 @@
 // @ts-check
+const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -11,6 +12,40 @@ const { ModuleFederationPlugin } = require('@module-federation/enhanced/webpack'
 // Must match the indexer's `ModuleFederationPlugin({ name: 'mws_indexer' })`.
 // See ../reusable-indexer/web/webpack.config.js.
 const INDEXER_REMOTE_NAME = 'mws_indexer';
+
+/**
+ * Emits `staticwebapp.config.json` from the repo root into the build output.
+ * Azure Static Web Apps reads this file at the root of the deployed bundle to
+ * decide how to route requests; without it, hitting a deep-link like
+ * `/c/{documentSetId}` on refresh returns a 404 because SWA looks for a real
+ * file at that path. The config rewrites unknown paths to `/index.html` so
+ * react-router can pick them up client-side.
+ *
+ * Lives as an inline plugin (rather than `copy-webpack-plugin`) to avoid a
+ * new direct dependency for a single static asset.
+ */
+class CopyStaticWebAppConfigPlugin {
+  constructor(sourceFile) {
+    this.sourceFile = sourceFile;
+  }
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('CopyStaticWebAppConfigPlugin', (compilation) => {
+      compilation.hooks.processAssets.tap(
+        {
+          name: 'CopyStaticWebAppConfigPlugin',
+          stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
+        },
+        () => {
+          const contents = fs.readFileSync(this.sourceFile);
+          compilation.emitAsset(
+            'staticwebapp.config.json',
+            new compiler.webpack.sources.RawSource(contents),
+          );
+        },
+      );
+    });
+  }
+}
 
 /** @param {Record<string, unknown>} _env @param {{ mode: string }} argv */
 module.exports = (_env, argv) => {
@@ -169,6 +204,12 @@ module.exports = (_env, argv) => {
 
       // Injects the bundled scripts into index.html automatically.
       new HtmlWebpackPlugin({ template: './index.html' }),
+
+      // Emit Azure Static Web Apps routing config so deep-links like
+      // `/c/{documentSetId}` rewrite to /index.html on refresh.
+      new CopyStaticWebAppConfigPlugin(
+        path.resolve(__dirname, 'staticwebapp.config.json'),
+      ),
 
       // Expose environment variables to the browser bundle.
       // Only whitelisted variables are forwarded — never forward the entire process.env.
