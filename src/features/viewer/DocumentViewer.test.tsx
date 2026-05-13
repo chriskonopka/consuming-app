@@ -220,7 +220,11 @@ describe('DocumentViewer', () => {
   });
 
   it('shows "Couldn\'t locate" when the drift guard rejects', async () => {
-    const tooTall: CitationRect = { ...HIGHLIGHT, h: 1000 };
+    // Mocked page natural size is 800x1000 (see pdfjs mock); the drift guard
+    // rejects rectangles whose rendered height exceeds the page height. Pick
+    // an h well above 1000 so the verdict is unambiguous regardless of the
+    // viewer's fit-to-width scale.
+    const tooTall: CitationRect = { ...HIGHLIGHT, h: 1500 };
     render(
       <Harness open documentId="master-agreement.pdf" page={2} highlight={tooTall}>
         <DocumentViewer open widthPx={600} />

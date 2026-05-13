@@ -287,7 +287,7 @@ Per original doc §4.3.1:
 The original doc §4.3.2 spec assumed the client verified citations against extracted text. **The API's `CitationBuilderSkill` already validates `[cite:N]` against extracted lines and silently discards hallucinations** before the response is streamed. Therefore:
 
 - v1 does NOT re-verify citation text content.
-- v1 DOES apply the **drift guard** (§5.6) — a rendered highlight covering > 85% of visible page height is rejected as "Couldn't locate this quote on the page." This catches the case where API coordinates land on a region that doesn't make visual sense. (Threshold history: 25% (initial), raised to 50% on 2026-05-13 to fit the API's section-sized citation rectangles, raised again to 85% the same day for end-to-end QA against the current API output. Tighten back down as the server-side citation pipeline returns snippet-tight bounds.)
+- v1 DOES apply the **drift guard** (§5.6) — a rendered highlight covering > 100% of visible page height is rejected as "Couldn't locate this quote on the page." This catches the case where API coordinates exceed the page geometry (unambiguously bad data). (Threshold history, all 2026-05-13: 25% → 50% → 85% → 100% as the API's citation rectangles were observed to grow. Tighten back down as the server-side citation pipeline returns snippet-tight bounds.)
 
 If a citation arrives without coordinates (`x|y|w|h` all 0 or negative), render it as `[N]` with a strike-through and tooltip "Unverified — coordinates missing." This preserves the original doc's user-visible "honest about misses" guarantee.
 
@@ -322,7 +322,7 @@ When the viewer opens with a citation:
 
 1. Show "Locating citation on page {N}…" banner while the page renders.
 2. Render the page; when ready, draw a highlight rectangle at `(x, y, w, h)` PDF points, scaled by the current render scale factor.
-3. **Drift guard** — if the rectangle spans more than 85% of the visible page height, reject the highlight and show "Couldn't locate this quote on the page." (Catches occasional bad coordinates. Raised from 25% to 50% on 2026-05-13, then to 85% the same day for QA.)
+3. **Drift guard** — if the rectangle's rendered height exceeds the visible page height (>100%), reject the highlight and show "Couldn't locate this quote on the page." (Catches genuinely-broken coordinates. Threshold raised 25% → 50% → 85% → 100% on 2026-05-13 as the API's citation pipeline was observed emitting larger rectangles.)
 4. **Multi-line quotes** — the API returns one bounding rectangle per `citation` event. If a quote spans multiple lines on the page (rare, since the citation event resolves to a single line per the extraction rules), v1 renders one rectangle. Multi-rect support is deferred until the API emits multiple events for one cited quote.
 5. Auto-scroll: center the highlighted rectangle in the viewport.
 6. Highlight color: soft yellow overlay using `color-mix(in srgb, var(--color-warning) 40%, transparent)` so the underlying text remains legible. Per `web-styling.md`, no hardcoded `rgba`.
@@ -455,7 +455,7 @@ Inherits the indexer's `web-testing.md` and `web-accessibility.md` standards:
 - Switching collections away from a chat thread and back restores the full conversation from the API.
 
 ### Citations & viewer
-- A citation whose API-supplied rectangle covers > 85% of page height renders with strike-through and "Couldn't locate" tooltip — never as a misleading mark.
+- A citation whose API-supplied rectangle exceeds the page geometry (>100% of page height) renders with strike-through and "Couldn't locate" tooltip — never as a misleading mark.
 - A scanned PDF's citation highlights at the API-supplied coordinates (vision pipeline ran server-side). No client-side OCR.
 - PDF page navigation via numeric input, prev/next buttons, and PageUp/PageDown all work.
 

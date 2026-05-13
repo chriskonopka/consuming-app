@@ -7,7 +7,7 @@
  *   - Coords missing → strike-through + "Unverified — coordinates missing".
  *   - Coords present → "{fileName}, page {page}".
  *
- * Geometry-based drift-guard verdicts (>85% page height) are evaluated in the
+ * Geometry-based drift-guard verdicts (>100% page height) are evaluated in the
  * viewer once pdf.js reports page dimensions; that case is rendered there as
  * a "Couldn't locate this quote" banner, not on the marker.
  */
