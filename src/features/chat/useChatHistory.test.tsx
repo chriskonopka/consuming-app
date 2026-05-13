@@ -43,10 +43,12 @@ describe('useChatHistory stale-ref self-heal', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  it('fires onStaleConversation once on 404 and suppresses the public error', async () => {
+  it('fires onStaleConversation once on persistent 404 (after retry) and suppresses the public error', async () => {
     // 404 means the cached conversationId points to a conversation that was
     // deleted; recovery is to drop the id and let the next send lazy-create.
-    fetchMock.mockResolvedValueOnce(
+    // The hook retries 404 up to 3 times with backoff (post-stream blob
+    // flush lag) — return 404 on every attempt so we hit the truly-stale path.
+    fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
           type: 'https://problems.api/not-found',
@@ -65,9 +67,66 @@ describe('useChatHistory stale-ref self-heal', () => {
       { wrapper: ({ children }) => wrap(children) },
     );
 
-    await waitFor(() => expect(onStaleConversation).toHaveBeenCalledTimes(1));
+    // Allow time for the retry sequence: 500 + 1000 + 2000 = 3500ms backoff.
+    await waitFor(
+      () => expect(onStaleConversation).toHaveBeenCalledTimes(1),
+      { timeout: 6000 },
+    );
     expect(onStaleDocset).not.toHaveBeenCalled();
     expect(result.current.error).toBeNull();
+  });
+
+  it('does not fire onStaleConversation if a retry succeeds (post-stream blob flush lag)', async () => {
+    // Simulate the post-STREAM_ENDED race: first /history attempt 404s
+    // because the server hasn't flushed the blob yet, the retry succeeds.
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            type: 'https://problems.api/not-found',
+            title: 'Not Found',
+            status: 404,
+            detail: 'Not yet.',
+          }),
+          { status: 404, headers: { 'content-type': 'application/problem+json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversationId: 'conv-1',
+            totalMessages: 2,
+            messages: [
+              {
+                id: 'm1',
+                role: 'user',
+                content: 'hi',
+                timestamp: '',
+                llmProvider: null,
+                citations: null,
+              },
+              {
+                id: 'm2',
+                role: 'assistant',
+                content: 'hello',
+                timestamp: '',
+                llmProvider: 'Claude',
+                citations: null,
+              },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+
+    const onStaleConversation = jest.fn();
+    const { result } = renderHook(
+      () => useChatHistory('col-1', 'conv-1', { onStaleConversation }),
+      { wrapper: ({ children }) => wrap(children) },
+    );
+
+    await waitFor(() => expect(result.current.messages.length).toBe(2), { timeout: 6000 });
+    expect(onStaleConversation).not.toHaveBeenCalled();
   });
 
   it('fires onStaleDocset once on 403 and suppresses the public error', async () => {

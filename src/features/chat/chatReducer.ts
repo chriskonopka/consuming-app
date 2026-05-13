@@ -41,6 +41,7 @@ export const buildInitialChatSession = (documentSetId: string): ChatSession => (
   documentSetId,
   conversationId: null,
   streaming: null,
+  completed: null,
   composerText: '',
 });
 
@@ -69,6 +70,10 @@ export const chatReducer = (state: ChatSession, action: ChatAction): ChatSession
         ...state,
         conversationId: action.conversationId,
         composerText: '',
+        // Clear the previous completed snapshot — the new turn replaces it
+        // as the "most recent thing the user said." Without this, two
+        // pending turns can stack visually.
+        completed: null,
         streaming: {
           userMessageId: action.userMessageId,
           userMessageText: action.userMessageText,
@@ -93,7 +98,23 @@ export const chatReducer = (state: ChatSession, action: ChatAction): ChatSession
       if (!state.streaming) return state;
       if (state.streaming.phase === action.phase) return state;
       return updateStreaming(state, { phase: action.phase, phaseStartedAt: action.now });
-    case 'STREAM_ENDED':
+    case 'STREAM_ENDED': {
+      // Move the just-streamed user+assistant bubbles into `completed` so
+      // they stay visible while /history catches up — see
+      // `CompletedStreamSnapshot` doc comment.
+      if (!state.streaming) return state;
+      return {
+        ...state,
+        streaming: null,
+        completed: {
+          userMessageId: state.streaming.userMessageId,
+          userMessageText: state.streaming.userMessageText,
+          assistantBuffer: state.streaming.assistantBuffer,
+          citations: state.streaming.citations,
+          completedAt: Date.now(),
+        },
+      };
+    }
     case 'STREAM_FAILED':
     case 'STREAM_ABORTED':
       if (!state.streaming) return state;

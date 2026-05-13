@@ -54,6 +54,27 @@ export interface StreamingState {
   phaseStartedAt: number;
 }
 
+/**
+ * Snapshot of the just-completed assistant turn, kept after `STREAM_ENDED`
+ * so the user keeps seeing their message + the response while the server's
+ * `/history` blob catches up. Without this, the bubbles vanish on stream
+ * end and the panel goes blank for a beat (sometimes longer if the blob
+ * flush lags or `/history` 404s briefly) — see PR #8's self-heal context.
+ *
+ * Cleared on the next `STREAM_STARTED`, on collection switch, and on
+ * explicit conversation clear. MessageList renders these as tail bubbles
+ * only when `messages` from /history doesn't already include the same
+ * user text — so as soon as the blob catches up, the snapshot is hidden
+ * automatically (no duplicate display).
+ */
+export interface CompletedStreamSnapshot {
+  userMessageId: string;
+  userMessageText: string;
+  assistantBuffer: string;
+  citations: CitationData[];
+  completedAt: number;
+}
+
 // =============================================================================
 // Chat session
 // =============================================================================
@@ -64,6 +85,12 @@ export interface ChatSession {
   conversationId: string | null;
   /** Non-null only while a response is in flight. */
   streaming: StreamingState | null;
+  /**
+   * Snapshot of the last completed stream, retained past `STREAM_ENDED` so
+   * the user keeps seeing the messages while /history catches up. Cleared
+   * on the next send / collection switch / clear.
+   */
+  completed: CompletedStreamSnapshot | null;
   /** Composer textarea value — not persisted. */
   composerText: string;
 }
