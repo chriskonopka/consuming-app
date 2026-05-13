@@ -49,14 +49,17 @@ export interface ViewerState {
  * Drift guard threshold — REQUIREMENTS.md §5.2 / §5.6.
  * Reject highlights covering more than this fraction of the visible page height.
  *
- * Raised from 0.25 → 0.50 on 2026-05-13, then 0.50 → 0.85 later the same day
- * to support hands-on QA against the current API output. The server is still
- * emitting near-page-sized rectangles for many citations; raising the gate
- * lets the team see those highlights end-to-end while the citation pipeline
- * is tightened server-side. Tighten this back down once the API ships tight
- * snippet bounds — the gate is a safety net, not a permission.
+ * Threshold history (all 2026-05-13):
+ *   0.25 → 0.50 → 0.85 → 1.0
+ *
+ * Raised to 1.0 to effectively pass through every API-supplied rectangle
+ * while the server's citation pipeline emits page-sized bounds. The gate
+ * still rejects coordinates that exceed the page (>100%), which are
+ * unambiguously bad data — but anything that fits on the page renders.
+ * Tighten this back down (target 0.50 long-term, 0.25 once the API ships
+ * snippet-tight bounds) — the gate is a safety net, not a permission.
  */
-export const DRIFT_GUARD_MAX_PAGE_FRACTION = 0.85;
+export const DRIFT_GUARD_MAX_PAGE_FRACTION = 1.0;
 
 /**
  * Result of running the drift guard.

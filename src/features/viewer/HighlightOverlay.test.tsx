@@ -57,21 +57,21 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: false });
   });
 
-  it('rejects highlights covering > 85% of the page height', () => {
+  it('rejects highlights taller than the page (rect height > 100% of pageHeight)', () => {
     const dispatch = jest.fn();
-    // h * scale = 600 * 1.5 = 900; pageHeight = 1000; ratio = 0.90 → reject
-    const tall: CitationRect = { ...HIGHLIGHT, h: 600 };
+    // h * scale = 800 * 1.5 = 1200; pageHeight = 1000; ratio = 1.20 → reject
+    const tooTall: CitationRect = { ...HIGHLIGHT, h: 800 };
     const { queryByTestId } = render(
-      <HighlightOverlay highlight={tall} viewport={buildViewport()} dispatch={dispatch} />,
+      <HighlightOverlay highlight={tooTall} viewport={buildViewport()} dispatch={dispatch} />,
     );
     expect(queryByTestId('citation-highlight')).toBeNull();
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: true });
   });
 
-  it('renders at exactly 85% of page height (boundary)', () => {
+  it('renders at exactly 100% of page height (boundary)', () => {
     const dispatch = jest.fn();
-    // h * scale must equal exactly 85% of pageHeight: 1000 * 0.85 = 850 px → h = 850/1.5
-    const exact: CitationRect = { ...HIGHLIGHT, h: 850 / 1.5 };
+    // h * scale must equal exactly 100% of pageHeight: 1000 / 1.5
+    const exact: CitationRect = { ...HIGHLIGHT, h: 1000 / 1.5 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={exact} viewport={buildViewport()} dispatch={dispatch} />,
     );
@@ -79,10 +79,10 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: false });
   });
 
-  it('rejects just over 85% of page height (boundary)', () => {
+  it('rejects just over 100% of page height (boundary)', () => {
     const dispatch = jest.fn();
-    // h * scale > 850 px (> 85%)
-    const justOver: CitationRect = { ...HIGHLIGHT, h: 850.1 / 1.5 };
+    // h * scale just over 1000 px
+    const justOver: CitationRect = { ...HIGHLIGHT, h: 1000.1 / 1.5 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={justOver} viewport={buildViewport()} dispatch={dispatch} />,
     );
@@ -90,10 +90,10 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: true });
   });
 
-  it('renders highlights between 50% and 85% (previously rejected, now allowed for QA)', () => {
+  it('renders highlights between 85% and 100% (previously rejected, now allowed for QA)', () => {
     const dispatch = jest.fn();
-    // h * scale = 500 * 1.5 = 750; pageHeight = 1000; ratio = 0.75 → render
-    const moderate: CitationRect = { ...HIGHLIGHT, h: 500 };
+    // h * scale = 620 * 1.5 = 930; pageHeight = 1000; ratio = 0.93 → render
+    const moderate: CitationRect = { ...HIGHLIGHT, h: 620 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={moderate} viewport={buildViewport()} dispatch={dispatch} />,
     );

@@ -4,7 +4,7 @@
 
 Right-side panel rendering of document content. PDFs use pdf.js with three layers (canvas + text layer + highlight overlay) per REQUIREMENTS.md §4.5.4 / §5.4. Images use the blob-URL pattern (auth-fetched, then `<img src=blobUrl>`) because `<img>` cannot carry an `Authorization` header.
 
-Citation highlights run through the drift guard (`driftGuard` in `@shared/types/viewer`) — highlights covering > 85% of visible page height are rejected and the "Couldn't locate this quote" fallback fires. (Threshold history: 25% (initial) → 50% on 2026-05-13 → 85% the same day for QA. Tighten back down as the API ships snippet-tight citation rectangles. See `DRIFT_GUARD_MAX_PAGE_FRACTION` in `viewer.ts`.)
+Citation highlights run through the drift guard (`driftGuard` in `@shared/types/viewer`) — highlights whose rendered height exceeds the visible page height (>100%) are rejected and the "Couldn't locate this quote" fallback fires. (Threshold history, all 2026-05-13: 25% → 50% → 85% → 100% as the API's citation rectangles were observed to grow. Tighten back down as the API ships snippet-tight bounds. See `DRIFT_GUARD_MAX_PAGE_FRACTION` in `viewer.ts`.)
 
 ## What does not belong here
 
