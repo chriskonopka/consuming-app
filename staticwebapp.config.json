@@ -1,0 +1,13 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/*.{js,mjs,css,map,json,wasm,ico,png,jpg,jpeg,gif,svg,woff,woff2,ttf,eot}",
+      "/pdfjs/*",
+      "/assets/*"
+    ]
+  },
+  "mimeTypes": {
+    ".mjs": "text/javascript"
+  }
+}
