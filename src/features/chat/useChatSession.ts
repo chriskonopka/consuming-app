@@ -61,13 +61,30 @@ export const useChatSession = (
     onStaleDocset: options.onStaleDocset,
   });
 
-  // Push the resolved conversation id into the reducer once. The reducer
-  // ignores no-op transitions, so re-runs are safe.
+  // Sync the resolved conversation id from `/list` into the reducer.
+  //
+  // The effect must not clobber a locally-set `state.conversationId` with
+  // `/list`'s stale null — once `useSseChat.ensureConversation` lazy-creates
+  // a conversation, the `/list` query is still holding its mount-time
+  // cached null until something invalidates it. When `STREAM_ENDED` flips
+  // `state.streaming` from non-null back to null, this effect re-runs, and
+  // a naive `dispatch(CONVERSATION_RESOLVED, null)` would wipe the freshly
+  // created id — the next send would then go through `ensureConversation`
+  // again and create a brand-new conversation per message, losing history.
+  //
+  // Rules:
+  //  - if state and /list agree, no-op
+  //  - if /list returned null, keep state as-is (`/list` is behind; if the
+  //    conversation was truly deleted, the self-heal in `useChatHistory`
+  //    handles it via a 404 on `/history`)
+  //  - otherwise, sync `/list`'s value into state
   useEffect(() => {
     if (!documentSetId) return;
     if (state.streaming) return;
+    if (state.conversationId === conversationId) return;
+    if (conversationId === null) return;
     dispatch({ type: 'CONVERSATION_RESOLVED', conversationId });
-  }, [conversationId, documentSetId, state.streaming]);
+  }, [conversationId, documentSetId, state.streaming, state.conversationId]);
 
   if (!documentSetId) return null;
 
