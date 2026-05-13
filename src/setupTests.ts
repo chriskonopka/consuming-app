@@ -173,17 +173,6 @@ if (typeof globalThis.Response === 'undefined') {
 // `expect(results).toHaveNoViolations()` without re-registering per file.
 expect.extend(toHaveNoViolations);
 
-// jsdom does not implement URL.createObjectURL / URL.revokeObjectURL. The
-// download flow in features/viewer creates a temporary blob URL to trigger a
-// browser save dialog. Stub them so the hook can be exercised in unit tests;
-// the returned id is also asserted to ensure the revoke matches the create.
-if (typeof URL.createObjectURL === 'undefined') {
-  // @ts-expect-error -- structural shim for jsdom
-  URL.createObjectURL = jest.fn((blob: Blob) => `blob:test-${blob.size}-${blob.type}`);
-  // @ts-expect-error -- structural shim for jsdom
-  URL.revokeObjectURL = jest.fn();
-}
-
 // jsdom does not expose crypto.randomUUID — polyfill using Node's built-in crypto
 Object.defineProperty(global, 'crypto', {
   value: { randomUUID },
