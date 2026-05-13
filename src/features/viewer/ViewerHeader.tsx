@@ -7,15 +7,12 @@
  * canonical type name so the badge is not colour-only.
  */
 
-import { DownloadSimple, X } from '@phosphor-icons/react';
-import { useCallback } from 'react';
+import { X } from '@phosphor-icons/react';
 
 import type { DocumentMetadataResponse, FileTypeCode } from '@shared/types';
 
 import { IconButton } from '../../components/IconButton';
 import { Pill } from '../../components/Pill';
-
-import { useDownloadDocument } from './useDownloadDocument';
 
 import styles from './ViewerHeader.module.scss';
 
@@ -37,12 +34,6 @@ export const ViewerHeader = ({ metadata, documentId, totalPages, onClose }: Prop
   // Fall back to the documentId as the display title until metadata loads —
   // documentId is `fileName` in the v1 wiring (see useCitationClick).
   const title = metadata?.fileName ?? documentId ?? 'Document';
-  const { download, status: downloadStatus } = useDownloadDocument();
-
-  const handleDownload = useCallback(() => {
-    if (!documentId) return;
-    void download(documentId, metadata?.fileName ?? null);
-  }, [documentId, metadata, download]);
 
   return (
     <header className={styles.header}>
@@ -63,15 +54,7 @@ export const ViewerHeader = ({ metadata, documentId, totalPages, onClose }: Prop
           </span>
         )}
       </div>
-      <div className={styles.actions}>
-        <IconButton
-          icon={DownloadSimple}
-          ariaLabel={`Download ${metadata?.fileName ?? 'document'}`}
-          onClick={handleDownload}
-          disabled={!documentId || downloadStatus === 'downloading'}
-        />
-        <IconButton icon={X} ariaLabel="Close document viewer" onClick={onClose} />
-      </div>
+      <IconButton icon={X} ariaLabel="Close document viewer" onClick={onClose} />
     </header>
   );
 };
