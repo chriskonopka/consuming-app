@@ -21,6 +21,7 @@ describe('chatReducer', () => {
       documentSetId: 'doc-set-1',
       conversationId: null,
       streaming: null,
+      completed: null,
       composerText: '',
     });
   });
@@ -165,6 +166,66 @@ describe('chatReducer', () => {
     expect(chatReducer(started, { type: 'STREAM_ENDED' }).streaming).toBeNull();
     expect(chatReducer(started, { type: 'STREAM_FAILED' }).streaming).toBeNull();
     expect(chatReducer(started, { type: 'STREAM_ABORTED' }).streaming).toBeNull();
+  });
+
+  it('STREAM_ENDED snapshots the just-streamed turn into `completed` so bubbles survive history-refetch lag', () => {
+    const controller = new AbortController();
+    const withTokens = chatReducer(
+      chatReducer(initial(), {
+        type: 'STREAM_STARTED',
+        userMessageId: 'u',
+        userMessageText: 'hello',
+        conversationId: 'c',
+        abortController: controller,
+        now: 0,
+      }),
+      { type: 'STREAM_TOKEN', text: 'hi back' },
+    );
+    const ended = chatReducer(withTokens, { type: 'STREAM_ENDED' });
+    expect(ended.streaming).toBeNull();
+    expect(ended.completed).toEqual({
+      userMessageId: 'u',
+      userMessageText: 'hello',
+      assistantBuffer: 'hi back',
+      citations: [],
+      completedAt: expect.any(Number),
+    });
+  });
+
+  it('STREAM_FAILED and STREAM_ABORTED do NOT populate `completed`', () => {
+    const controller = new AbortController();
+    const started = chatReducer(initial(), {
+      type: 'STREAM_STARTED',
+      userMessageId: 'u',
+      userMessageText: 'hello',
+      conversationId: 'c',
+      abortController: controller,
+      now: 0,
+    });
+    expect(chatReducer(started, { type: 'STREAM_FAILED' }).completed).toBeNull();
+    expect(chatReducer(started, { type: 'STREAM_ABORTED' }).completed).toBeNull();
+  });
+
+  it('STREAM_STARTED clears the previous completed snapshot', () => {
+    const seeded = {
+      ...initial(),
+      completed: {
+        userMessageId: 'prev',
+        userMessageText: 'prev',
+        assistantBuffer: 'prev',
+        citations: [],
+        completedAt: 0,
+      },
+    };
+    const next = chatReducer(seeded, {
+      type: 'STREAM_STARTED',
+      userMessageId: 'u',
+      userMessageText: 'next',
+      conversationId: 'c',
+      abortController: new AbortController(),
+      now: 0,
+    });
+    expect(next.completed).toBeNull();
   });
 
   it('CONVERSATION_CLEARED resets state and aborts in-flight stream', () => {

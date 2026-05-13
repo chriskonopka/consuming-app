@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 
 import type {
   CitationData,
+  CompletedStreamSnapshot,
   LocalMessage,
   StreamingState,
 } from '@shared/types';
@@ -24,8 +25,31 @@ import styles from './MessageList.module.scss';
 interface Props {
   messages: ReadonlyArray<LocalMessage>;
   streaming: StreamingState | null;
+  /**
+   * Snapshot of the just-completed stream — rendered as tail bubbles when
+   * /history hasn't caught up yet so the user keeps seeing their turn
+   * after `STREAM_ENDED`. Hidden when `messages` already contains the same
+   * user text (history caught up, server confirmed).
+   */
+  completed: CompletedStreamSnapshot | null;
   emptyStateLabel: string;
 }
+
+const historyContainsCompletedTurn = (
+  messages: ReadonlyArray<LocalMessage>,
+  completed: CompletedStreamSnapshot,
+): boolean => {
+  // Last persisted user message text matching the snapshot is the simplest
+  // reliable signal — the server assigns its own message IDs so we can't
+  // compare on id. Walk from the tail (the completed turn is the most
+  // recent thing the user sent, so it lives at the end if present).
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role !== 'user') continue;
+    return message.content === completed.userMessageText;
+  }
+  return false;
+};
 
 const renderContentWithCitations = (
   content: string,
@@ -69,15 +93,25 @@ const renderContentWithCitations = (
   return elements;
 };
 
-export const MessageList = ({ messages, streaming, emptyStateLabel }: Props) => {
+export const MessageList = ({
+  messages,
+  streaming,
+  completed,
+  emptyStateLabel,
+}: Props) => {
   const tailRef = useRef<HTMLDivElement>(null);
   const onCitationClick = useCitationClick();
 
+  const showCompleted =
+    completed !== null &&
+    !streaming &&
+    !historyContainsCompletedTurn(messages, completed);
+
   useEffect(() => {
     tailRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages, streaming?.assistantBuffer]);
+  }, [messages, streaming?.assistantBuffer, showCompleted]);
 
-  if (messages.length === 0 && !streaming) {
+  if (messages.length === 0 && !streaming && !showCompleted) {
     return (
       <div className={styles.empty} role="status" aria-live="polite">
         <p>{emptyStateLabel}</p>
@@ -121,6 +155,25 @@ export const MessageList = ({ messages, streaming, emptyStateLabel }: Props) => 
                 onCitationClick,
               )}
             </div>
+          </li>
+        </>
+      )}
+      {showCompleted && completed && (
+        <>
+          <li className={`${styles.message} ${styles.user}`}>
+            <div className={styles.bubble}>{completed.userMessageText}</div>
+          </li>
+          <li className={`${styles.message} ${styles.assistant}`}>
+            <div className={styles.bubble}>
+              {renderContentWithCitations(
+                completed.assistantBuffer,
+                completed.citations,
+                onCitationClick,
+              )}
+            </div>
+            {completed.citations.length > 0 && (
+              <SourceList citations={completed.citations} onOpen={onCitationClick} />
+            )}
           </li>
         </>
       )}

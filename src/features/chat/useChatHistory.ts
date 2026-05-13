@@ -56,6 +56,19 @@ export const useChatHistory = (
     enabled,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
+    // The blob backing /history is written after the SSE stream ends; when
+    // we invalidate the query at STREAM_ENDED there's a brief window where
+    // the blob may not yet contain the just-streamed messages. Retry 404s
+    // with backoff so the post-stream race resolves on its own instead of
+    // tripping the self-heal that drops `conversationId`. Other statuses
+    // (403, 5xx) do not retry — the surrounding code handles them.
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 404) {
+        return failureCount < 3;
+      }
+      return false;
+    },
+    retryDelay: (failureCount) => 500 * 2 ** failureCount,
     queryFn: () =>
       api.post<ConversationHistoryResponse>(
         `/document-sets/${documentSetId}/conversations/${conversationId}/history`,

@@ -53,7 +53,7 @@ describe('MessageList', () => {
 
   it('renders empty state when no messages and not streaming', () => {
     render(
-      <MessageList messages={[]} streaming={null} emptyStateLabel="Ask anything" />,
+      <MessageList messages={[]} streaming={null} completed={null} emptyStateLabel="Ask anything" />,
       { wrapper },
     );
     expect(screen.getByText('Ask anything')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('MessageList', () => {
 
   it('renders user and assistant bubbles with citation marker', () => {
     render(
-      <MessageList messages={messages} streaming={null} emptyStateLabel="" />,
+      <MessageList messages={messages} streaming={null} completed={null} emptyStateLabel="" />,
       { wrapper },
     );
     expect(screen.getByText('What is the governing law?')).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('MessageList', () => {
 
   it('renders the SourceList expander beneath assistant messages with citations', () => {
     render(
-      <MessageList messages={messages} streaming={null} emptyStateLabel="" />,
+      <MessageList messages={messages} streaming={null} completed={null} emptyStateLabel="" />,
       { wrapper },
     );
     expect(screen.getByRole('button', { name: 'View 1 source' })).toBeInTheDocument();
@@ -94,6 +94,7 @@ describe('MessageList', () => {
           phase: 'finalizing',
           phaseStartedAt: 0,
         }}
+        completed={null}
         emptyStateLabel=""
       />,
       { wrapper },
@@ -114,7 +115,7 @@ describe('MessageList', () => {
       citations: [],
       status: 'committed',
     };
-    render(<MessageList messages={[orphan]} streaming={null} emptyStateLabel="" />, {
+    render(<MessageList messages={[orphan]} streaming={null} completed={null} emptyStateLabel="" />, {
       wrapper,
     });
     expect(
@@ -122,15 +123,84 @@ describe('MessageList', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the completed snapshot tail when /history has not caught up', () => {
+    // Post-STREAM_ENDED: history hasn't returned the persisted messages yet.
+    // The reducer's `completed` snapshot should fill the gap so the user
+    // keeps seeing what they sent + the assistant reply.
+    render(
+      <MessageList
+        messages={[]}
+        streaming={null}
+        completed={{
+          userMessageId: 'u',
+          userMessageText: 'where is Cambridge?',
+          assistantBuffer: 'Cambridge is in Massachusetts.',
+          citations: [],
+          completedAt: 0,
+        }}
+        emptyStateLabel="Ask anything"
+      />,
+      { wrapper },
+    );
+    expect(screen.getByText('where is Cambridge?')).toBeInTheDocument();
+    expect(screen.getByText('Cambridge is in Massachusetts.')).toBeInTheDocument();
+    // Empty-state label should NOT show — the completed snapshot counts as
+    // non-empty content.
+    expect(screen.queryByText('Ask anything')).toBeNull();
+  });
+
+  it('hides the completed snapshot once /history contains the same user message', () => {
+    // History caught up — the snapshot would duplicate the user bubble.
+    const persisted: ReadonlyArray<LocalMessage> = [
+      {
+        id: 'srv-1',
+        role: 'user',
+        content: 'where is Cambridge?',
+        timestamp: '',
+        llmProvider: null,
+        citations: [],
+        status: 'committed',
+      },
+      {
+        id: 'srv-2',
+        role: 'assistant',
+        content: 'Cambridge is in Massachusetts.',
+        timestamp: '',
+        llmProvider: 'Claude',
+        citations: [],
+        status: 'committed',
+      },
+    ];
+    render(
+      <MessageList
+        messages={persisted}
+        streaming={null}
+        completed={{
+          userMessageId: 'u',
+          userMessageText: 'where is Cambridge?',
+          assistantBuffer: 'Cambridge is in Massachusetts.',
+          citations: [],
+          completedAt: 0,
+        }}
+        emptyStateLabel=""
+      />,
+      { wrapper },
+    );
+    // Only one bubble per role — the snapshot was deduped because the last
+    // user message in history matches its userMessageText.
+    expect(screen.getAllByText('where is Cambridge?')).toHaveLength(1);
+    expect(screen.getAllByText('Cambridge is in Massachusetts.')).toHaveLength(1);
+  });
+
   it('passes axe in empty and populated states', async () => {
     let view = render(
-      <MessageList messages={[]} streaming={null} emptyStateLabel="Empty" />,
+      <MessageList messages={[]} streaming={null} completed={null} emptyStateLabel="Empty" />,
       { wrapper },
     );
     expect(await axe(view.container)).toHaveNoViolations();
     view.unmount();
     view = render(
-      <MessageList messages={messages} streaming={null} emptyStateLabel="" />,
+      <MessageList messages={messages} streaming={null} completed={null} emptyStateLabel="" />,
       { wrapper },
     );
     expect(await axe(view.container)).toHaveNoViolations();

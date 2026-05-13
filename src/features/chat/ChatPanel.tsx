@@ -234,6 +234,7 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
           <MessageList
             messages={history.messages}
             streaming={session?.state.streaming ?? null}
+            completed={session?.state.completed ?? null}
             emptyStateLabel="Ask anything about this collection"
           />
         )}
