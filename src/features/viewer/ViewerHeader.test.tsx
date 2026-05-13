@@ -1,4 +1,17 @@
+jest.mock('../../auth/msalInstance');
+
+const apiRaw = jest.fn();
+jest.mock('../../hooks/useApiClient', () => ({
+  useApiClient: () => ({
+    get: jest.fn(),
+    post: jest.fn(),
+    del: jest.fn(),
+    raw: apiRaw,
+  }),
+}));
+
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import type { DocumentMetadataResponse } from '@shared/types';
@@ -104,6 +117,52 @@ describe('ViewerHeader', () => {
       expect(screen.getByLabelText(`File type: ${fileType}`)).toBeInTheDocument();
     },
   );
+
+  it('exposes a download button that is disabled while metadata is loading', () => {
+    render(
+      <ViewerHeader
+        metadata={null}
+        documentId={null}
+        totalPages={0}
+        onClose={jest.fn()}
+      />,
+    );
+    // When there is no documentId at all the button is disabled — clicking
+    // would have nothing to download.
+    const downloadButton = screen.getByRole('button', { name: /^Download/ });
+    expect(downloadButton).toBeDisabled();
+  });
+
+  it('clicking download fetches /content with the documentId and triggers a save', async () => {
+    apiRaw.mockReset();
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    apiRaw.mockResolvedValue(
+      new Response(bytes.buffer, {
+        status: 200,
+        headers: { 'content-type': 'application/pdf' },
+      }),
+    );
+    // jsdom's anchor.click() doesn't trigger a download; spy on the click
+    // method to confirm the flow reached it. (Real download verification is
+    // an E2E concern.)
+    const anchorClick = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    const user = userEvent.setup();
+    render(
+      <ViewerHeader
+        metadata={buildMetadata({ fileName: 'brief.pdf' })}
+        documentId="doc-1"
+        totalPages={3}
+        onClose={jest.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Download brief.pdf' }));
+
+    expect(apiRaw).toHaveBeenCalledWith('/documents/doc-1/content');
+    expect(anchorClick).toHaveBeenCalledTimes(1);
+    anchorClick.mockRestore();
+  });
 
   it('has no axe violations', async () => {
     const { container } = render(
