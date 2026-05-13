@@ -57,10 +57,10 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: false });
   });
 
-  it('rejects highlights covering > 25% of the page height', () => {
+  it('rejects highlights covering > 50% of the page height', () => {
     const dispatch = jest.fn();
-    // h * scale = 200 * 1.5 = 300; pageHeight = 1000; ratio = 0.30 → reject
-    const tall: CitationRect = { ...HIGHLIGHT, h: 200 };
+    // h * scale = 400 * 1.5 = 600; pageHeight = 1000; ratio = 0.60 → reject
+    const tall: CitationRect = { ...HIGHLIGHT, h: 400 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={tall} viewport={buildViewport()} dispatch={dispatch} />,
     );
@@ -68,10 +68,10 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: true });
   });
 
-  it('renders at exactly 25% of page height (boundary)', () => {
+  it('renders at exactly 50% of page height (boundary)', () => {
     const dispatch = jest.fn();
-    // h * scale must equal exactly 25% of pageHeight: 1000 * 0.25 = 250 px → h = 250/1.5
-    const exact: CitationRect = { ...HIGHLIGHT, h: 250 / 1.5 };
+    // h * scale must equal exactly 50% of pageHeight: 1000 * 0.5 = 500 px → h = 500/1.5
+    const exact: CitationRect = { ...HIGHLIGHT, h: 500 / 1.5 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={exact} viewport={buildViewport()} dispatch={dispatch} />,
     );
@@ -79,15 +79,26 @@ describe('HighlightOverlay', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: false });
   });
 
-  it('rejects just over 25% of page height (boundary)', () => {
+  it('rejects just over 50% of page height (boundary)', () => {
     const dispatch = jest.fn();
-    // h * scale > 250 px (> 25%)
-    const justOver: CitationRect = { ...HIGHLIGHT, h: 250.1 / 1.5 };
+    // h * scale > 500 px (> 50%)
+    const justOver: CitationRect = { ...HIGHLIGHT, h: 500.1 / 1.5 };
     const { queryByTestId } = render(
       <HighlightOverlay highlight={justOver} viewport={buildViewport()} dispatch={dispatch} />,
     );
     expect(queryByTestId('citation-highlight')).toBeNull();
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: true });
+  });
+
+  it('renders highlights between 25% and 50% (previously rejected, now allowed)', () => {
+    const dispatch = jest.fn();
+    // h * scale = 250 * 1.5 = 375; pageHeight = 1000; ratio = 0.375 → render
+    const moderate: CitationRect = { ...HIGHLIGHT, h: 250 };
+    const { queryByTestId } = render(
+      <HighlightOverlay highlight={moderate} viewport={buildViewport()} dispatch={dispatch} />,
+    );
+    expect(queryByTestId('citation-highlight')).not.toBeNull();
+    expect(dispatch).toHaveBeenCalledWith({ type: 'SET_DRIFT_GUARD', fired: false });
   });
 
   it('scales correctly at a different render scale', () => {
