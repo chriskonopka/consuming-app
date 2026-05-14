@@ -39,8 +39,8 @@
 
 .source {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
@@ -49,6 +49,7 @@
   text-align: left;
   cursor: pointer;
   transition: var(--transition);
+  min-width: 0;
 }
 
 .source:hover,
@@ -58,13 +59,35 @@
   outline: none;
 }
 
+// Mirror the inline CitationMarker styling so the [N] chip in the row
+// is visually identical to the one inside the answer text — makes the
+// row<->marker correspondence obvious.
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  padding: 0 0.25rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-interactive);
+  background: color-mix(in srgb, var(--accent-interactive) 12%, transparent);
+}
+
 .fileName {
   font-weight: 500;
   color: var(--text-primary);
-  word-break: break-word;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pages {
+.page {
   font-size: 0.8125rem;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }

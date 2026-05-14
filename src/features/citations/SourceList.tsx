@@ -1,21 +1,26 @@
 /**
- * "View N sources" expander shown beneath each completed assistant message.
+ * Source list shown beneath each completed assistant message.
  *
- * Sources are derived from the message's `citations` array, grouped and
- * deduped by `fileName` via `groupCitationsBySource`. Each source row shows
- * the file name and the unique pages it's cited on. Clicking a row opens
- * the viewer at that source's first cited page (the same `onOpen` contract
- * that `<CitationMarker>` uses, with the citation it carries).
+ * One row per citation, ordered ascending by `marker`, so the panel
+ * order matches the inline `[N]` markers in the answer text. Each row
+ * is independently clickable to the same viewer target the inline
+ * marker uses — keyed by `documentId` (never `fileName`, which is
+ * display-only and can collide across DocumentSets).
  *
- * Doc-type pills and section headings are deferred per REQUIREMENTS.md §10
- * (need a `GET /documents/{id}` round-trip not in v1's scope).
+ * Earlier versions grouped citations by `fileName` with deduped pages,
+ * which created a misleading impression that marker `[N]` mapped to
+ * the Nth page in the first group. The new layout is a flat list with
+ * the `[N]` chip alongside the file name + page, so the relationship
+ * between an inline marker and its panel row is unambiguous.
+ *
+ * Markers are unique per response (the API's `CitationMarkerDetector`
+ * dedupes server-side), so there's no client-side dedup here.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CaretDown, CaretRight } from '@phosphor-icons/react';
 
 import type { Citation } from '@shared/types';
-import { groupCitationsBySource } from '@shared/types';
 
 import styles from './SourceList.module.scss';
 
@@ -27,10 +32,19 @@ interface Props {
 export const SourceList = ({ citations, onOpen }: Props) => {
   const [expanded, setExpanded] = useState(false);
 
-  if (citations.length === 0) return null;
+  // Sort by marker so the row order matches the order the markers appear
+  // in the answer text. The server emits markers sequentially per response,
+  // so this is normally already in order — sort defensively in case a
+  // future API change emits them out of order.
+  const ordered = useMemo(
+    () => [...citations].sort((markerA, markerB) => markerA.marker - markerB.marker),
+    [citations],
+  );
 
-  const groups = groupCitationsBySource([...citations]);
-  const total = groups.length;
+  if (ordered.length === 0) return null;
+
+  const total = ordered.length;
+  const label = `${total} ${total === 1 ? 'source' : 'sources'}`;
 
   return (
     <div className={styles.wrapper}>
@@ -45,22 +59,26 @@ export const SourceList = ({ citations, onOpen }: Props) => {
         ) : (
           <CaretRight size={16} weight="regular" aria-hidden="true" focusable="false" />
         )}
-        <span>{expanded ? 'Hide sources' : `View ${total} ${total === 1 ? 'source' : 'sources'}`}</span>
+        <span>{expanded ? 'Hide sources' : `View ${label}`}</span>
       </button>
       {expanded && (
         <ul className={styles.list} aria-label="Cited sources">
-          {groups.map((group) => (
-            <li key={group.fileName} className={styles.item}>
+          {ordered.map((citation) => (
+            <li key={citation.marker} className={styles.item}>
               <button
                 type="button"
                 className={styles.source}
-                onClick={() => onOpen(group.firstCitation)}
+                onClick={() => onOpen(citation)}
+                aria-label={`Citation ${citation.marker} — ${citation.fileName}, page ${citation.page}`}
               >
-                <span className={styles.fileName}>{group.fileName}</span>
-                <span className={styles.pages}>
-                  {group.pages.length === 1
-                    ? `Page ${group.pages[0]}`
-                    : `Pages ${group.pages.join(', ')}`}
+                <span className={styles.marker} aria-hidden="true">
+                  [{citation.marker}]
+                </span>
+                <span className={styles.fileName} title={citation.fileName}>
+                  {citation.fileName}
+                </span>
+                <span className={styles.page} aria-hidden="true">
+                  p{citation.page}
                 </span>
               </button>
             </li>
