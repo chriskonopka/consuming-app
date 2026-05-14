@@ -81,7 +81,13 @@ describe('useClearActiveCollection', () => {
     const selectCollection = jest.fn();
     const revealDocument = jest.fn();
     const indexerRef: { current: IndexerHandle | null } = {
-      current: { selectCollection, revealDocument },
+      current: {
+        selectCollection,
+        revealDocument,
+        deselectDocument: jest.fn(),
+        deselectFolder: jest.fn(),
+        clearSelection: jest.fn(),
+      },
     };
     let lastPath = '';
 

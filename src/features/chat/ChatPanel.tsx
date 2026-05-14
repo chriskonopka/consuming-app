@@ -19,7 +19,7 @@ import { IconButton } from '../../components/IconButton';
 import { Panel } from '../../components/Panel';
 import { Splitter } from '../../components/Splitter';
 import { ScopeIndicator, useChatScope } from '../chat-scope';
-import { useActiveCollection, useClearActiveCollection } from '../indexer-host';
+import { useActiveCollection, useClearActiveCollection, useIndexerRef } from '../indexer-host';
 import { useApiClient } from '../../hooks/useApiClient';
 import { appInsights } from '../../appInsights';
 
@@ -62,8 +62,30 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
   const activeCollection = useActiveCollection();
   const documentSetId = activeCollection?.documentSetId ?? null;
   const chatScope = useChatScope();
+  const indexerRef = useIndexerRef();
   const queryClient = useQueryClient();
   const clearActiveCollection = useClearActiveCollection();
+
+  // X / Clear-all from the chip rack must push the change into the indexer.
+  // The indexer is the source of truth for selection (it emits selection/
+  // changed, which re-syncs our local mirror). If we only mutated local
+  // state, the next echo would re-populate the chips from the indexer's
+  // still-populated state and the click would visually do nothing.
+  const handleRemoveScopedDocument = useCallback(
+    (documentId: string) => {
+      indexerRef.current?.deselectDocument(documentId);
+    },
+    [indexerRef],
+  );
+  const handleRemoveScopedFolder = useCallback(
+    (folderId: string) => {
+      indexerRef.current?.deselectFolder(folderId);
+    },
+    [indexerRef],
+  );
+  const handleClearScope = useCallback(() => {
+    indexerRef.current?.clearSelection();
+  }, [indexerRef]);
 
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -212,9 +234,9 @@ export const ChatPanel = ({ open, widthPx, onClose, onResize }: Props) => {
 
       <ScopeIndicator
         state={chatScope.state}
-        onRemoveDocument={chatScope.removeDocument}
-        onRemoveFolder={chatScope.removeFolder}
-        onClearAll={chatScope.clear}
+        onRemoveDocument={handleRemoveScopedDocument}
+        onRemoveFolder={handleRemoveScopedFolder}
+        onClearAll={handleClearScope}
       />
 
       <div className={styles.body}>
