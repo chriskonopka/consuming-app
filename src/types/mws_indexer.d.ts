@@ -101,6 +101,12 @@ declare module 'mws_indexer/types' {
     appInsights?: ApplicationInsights;
     themeOverrides?: Partial<Record<ThemeTokenKey, string>>;
     initialTheme?: 'light' | 'dark';
+    /**
+     * When `true`, the indexer skips rendering its built-in header
+     * theme-toggle button. Internal theme state and `initialTheme` are
+     * unaffected — useful when the host already provides a theme control.
+     */
+    hideThemeToggle?: boolean;
     initialState?: IndexerInitialState;
     onEvent?: (event: IndexerEvent) => void;
   }
