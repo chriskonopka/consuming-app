@@ -17,6 +17,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { useTheme } from '../../theme/useTheme';
 import { MsalAppProvider } from '../../auth/MsalAppProvider';
 import { ChatScopeProvider, useChatScope } from '../chat-scope';
 import { ViewerProvider, useViewer } from '../viewer';
@@ -131,6 +132,40 @@ describe('<IndexerHost>', () => {
 
     await user.click(screen.getByRole('button', { name: 'Trigger auth/expired' }));
     expect(screen.getByTestId('auth-status').textContent).toBe('expired');
+  });
+
+  it('remounts the indexer when the host theme toggles', async () => {
+    const ThemeProbe = () => {
+      const { theme, setTheme } = useTheme();
+      return (
+        <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+          flip theme
+        </button>
+      );
+    };
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/c/abc']}>
+        <MsalAppProvider>
+          <ThemeProvider>
+            <ChatScopeProvider>
+              <ViewerProvider>
+                <ThemeProbe />
+                <Routes>
+                  <Route path="*" element={<IndexerHost />} />
+                </Routes>
+              </ViewerProvider>
+            </ChatScopeProvider>
+          </ThemeProvider>
+        </MsalAppProvider>
+      </MemoryRouter>,
+    );
+    const firstStub = await screen.findByTestId('indexer-stub');
+
+    await user.click(screen.getByRole('button', { name: 'flip theme' }));
+
+    const remountedStub = await screen.findByTestId('indexer-stub');
+    expect(remountedStub).not.toBe(firstStub);
   });
 
   it('forces a remount on auth/expired by changing the indexer key', async () => {

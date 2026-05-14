@@ -17,11 +17,55 @@
   height: 56px;
 }
 
+.leading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .brand {
   font-family: var(--font-mix);
   font-size: 1.25rem;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+}
+
+.chatButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  min-width: 140px;
+  height: 36px;
+  padding: 0 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-teal);
+  background: var(--color-teal);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.chatButton:hover:not(:disabled),
+.chatButton:focus-visible:not(:disabled) {
+  background: var(--color-navy);
+  color: var(--color-white);
+  border-color: var(--color-navy);
+  outline: none;
+}
+
+.chatButton[aria-pressed='true'] {
+  background: var(--color-navy);
+  color: var(--color-white);
+  border-color: var(--color-navy);
+}
+
+.chatButtonLabel {
+  text-transform: uppercase;
 }
 
 .actions {

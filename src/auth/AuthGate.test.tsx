@@ -27,7 +27,7 @@ describe('AuthGate', () => {
       </AuthContextProvider>,
     );
     await wait();
-    expect(screen.getByRole('heading', { name: 'Ask your collections' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bayer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.queryByText('secret content')).not.toBeInTheDocument();
   });
