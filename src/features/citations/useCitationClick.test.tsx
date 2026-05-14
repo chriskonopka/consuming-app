@@ -16,6 +16,9 @@ jest.mock('../indexer-host', () => ({
     current: {
       selectCollection: () => undefined,
       revealDocument,
+      deselectDocument: () => undefined,
+      deselectFolder: () => undefined,
+      clearSelection: () => undefined,
     } satisfies IndexerHandle,
   }),
 }));

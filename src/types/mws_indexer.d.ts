@@ -87,6 +87,16 @@ declare module 'mws_indexer/types' {
   export interface IndexerHandle {
     selectCollection: (documentSetId: string | null) => void;
     revealDocument: (documentId: string) => void;
+    /**
+     * Idempotent removal of a single document from the indexer's chat-scope
+     * selection. The indexer's selection reducer fires, and the existing
+     * `selection/changed` event echoes back to the host.
+     */
+    deselectDocument: (documentId: string) => void;
+    /** Idempotent removal of a single folder; mirrors `deselectDocument`. */
+    deselectFolder: (folderId: string) => void;
+    /** Empty the indexer's chat-scope selection. Emits `selection/changed` with empty arrays. */
+    clearSelection: () => void;
   }
 
   export interface IndexerInitialState {

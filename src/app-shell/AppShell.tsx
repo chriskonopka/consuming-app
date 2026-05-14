@@ -112,8 +112,8 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
       </a>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <div className={styles.leading}>
-            <h1 className={styles.brand}>Bayer</h1>
+          <h1 className={styles.brand}>Bayer</h1>
+          <div className={styles.actions}>
             <button
               type="button"
               className={styles.chatButton}
@@ -126,8 +126,6 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
               <ChatCircleText size={20} weight="regular" aria-hidden="true" focusable="false" />
               <span className={styles.chatButtonLabel}>CHAT</span>
             </button>
-          </div>
-          <div className={styles.actions}>
             <ThemeToggle />
             {authState.status === 'authenticated' && <UserMenu />}
           </div>

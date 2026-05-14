@@ -42,6 +42,15 @@ const IndexerAppStub = forwardRef<IndexerHandle, IndexerAppProps>(
         revealDocument: () => {
           // Best-effort — stub doesn't render a file list, so this is a no-op.
         },
+        deselectDocument: () => {
+          // Stub has no selection state to mutate.
+        },
+        deselectFolder: () => {
+          // Stub has no selection state to mutate.
+        },
+        clearSelection: () => {
+          // Stub has no selection state to mutate.
+        },
       }),
       [onEvent],
     );
