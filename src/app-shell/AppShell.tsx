@@ -23,7 +23,6 @@ import { DEFAULT_CHAT_PANEL_WIDTH_PX, DEFAULT_VIEWER_PANEL_WIDTH_PX } from '@sha
 import { useTrackPageView } from '../telemetry/useTrackPageView';
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { IconButton } from '../components/IconButton';
 import { CHAT_PANEL_MAX_PX, CHAT_PANEL_MIN_PX, ChatPanel } from '../features/chat';
 import { ChatScopeProvider } from '../features/chat-scope';
 import { IndexerHost } from '../features/indexer-host';
@@ -113,16 +112,22 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
       </a>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <h1 className={styles.brand}>Ask your collections</h1>
-          <div className={styles.actions}>
-            <IconButton
-              icon={ChatCircleText}
-              ariaLabel={layoutState.chatPanel.open ? 'Close chat panel' : 'Open chat panel'}
+          <div className={styles.leading}>
+            <h1 className={styles.brand}>Bayer</h1>
+            <button
+              type="button"
+              className={styles.chatButton}
+              aria-label={layoutState.chatPanel.open ? 'Close chat panel' : 'Open chat panel'}
+              aria-pressed={layoutState.chatPanel.open}
+              aria-controls="chat-panel"
+              aria-expanded={layoutState.chatPanel.open}
               onClick={toggleChat}
-              ariaPressed={layoutState.chatPanel.open}
-              ariaControls="chat-panel"
-              ariaExpanded={layoutState.chatPanel.open}
-            />
+            >
+              <ChatCircleText size={20} weight="regular" aria-hidden="true" focusable="false" />
+              <span className={styles.chatButtonLabel}>CHAT</span>
+            </button>
+          </div>
+          <div className={styles.actions}>
             <ThemeToggle />
             {authState.status === 'authenticated' && <UserMenu />}
           </div>

@@ -14,6 +14,8 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 import type { IndexerAppProps, IndexerEvent, IndexerHandle } from '@shared/types';
 
+import styles from './IndexerApp.e2eStub.module.scss';
+
 const STUB_COLLECTIONS: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'stub-collection-1', name: 'Stub collection 1' },
   { id: 'stub-collection-2', name: 'Stub collection 2' },
@@ -118,13 +120,18 @@ const IndexerAppStub = forwardRef<IndexerHandle, IndexerAppProps>(
         <ul>
           {STUB_COLLECTIONS.map((collection) => (
             <li key={collection.id}>
-              <button type="button" onClick={() => handleClick(collection.id)}>
+              <button type="button" className={styles.stubButton} onClick={() => handleClick(collection.id)}>
                 {collection.name}
               </button>
             </li>
           ))}
         </ul>
-        <button type="button" onClick={handleSelectDocument} disabled={!activeId}>
+        <button
+          type="button"
+          className={styles.stubButton}
+          onClick={handleSelectDocument}
+          disabled={!activeId}
+        >
           Open stub document
         </button>
         {/*
@@ -135,19 +142,29 @@ const IndexerAppStub = forwardRef<IndexerHandle, IndexerAppProps>(
          * web-styling.md and web-accessibility.md both prefer plain buttons
          * with labels over visually-hidden test affordances.
          */}
-        <button type="button" onClick={handleAuthExpired}>
+        <button type="button" className={styles.stubButton} onClick={handleAuthExpired}>
           Trigger auth/expired
         </button>
-        <button type="button" onClick={handleUnhandledError}>
+        <button type="button" className={styles.stubButton} onClick={handleUnhandledError}>
           Trigger error/unhandled
         </button>
-        <button type="button" onClick={handleListChanged}>
+        <button type="button" className={styles.stubButton} onClick={handleListChanged}>
           Trigger collection/list-changed
         </button>
-        <button type="button" onClick={handleEmitSelectionChanged} disabled={!activeId}>
+        <button
+          type="button"
+          className={styles.stubButton}
+          onClick={handleEmitSelectionChanged}
+          disabled={!activeId}
+        >
           Emit selection/changed (populated)
         </button>
-        <button type="button" onClick={handleEmitSelectionCleared} disabled={!activeId}>
+        <button
+          type="button"
+          className={styles.stubButton}
+          onClick={handleEmitSelectionCleared}
+          disabled={!activeId}
+        >
           Emit selection/changed (cleared)
         </button>
       </div>

@@ -204,7 +204,11 @@ const IndexerMount = () => {
           </div>
         }
       >
-        <LazyIndexerApp key={state.remountKey} {...indexerProps} ref={indexerRef} />
+        <LazyIndexerApp
+          key={`${state.remountKey}:${theme}`}
+          {...indexerProps}
+          ref={indexerRef}
+        />
       </Suspense>
     </ErrorBoundary>
   );
