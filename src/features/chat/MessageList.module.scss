@@ -18,14 +18,16 @@
 
 .message {
   display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .assistant {
-  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .bubble {
