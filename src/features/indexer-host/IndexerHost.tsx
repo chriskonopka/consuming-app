@@ -191,6 +191,7 @@ const IndexerMount = () => {
     getAccessToken,
     appInsights: appInsights ?? undefined,
     initialTheme: theme,
+    hideThemeToggle: true,
     initialState: state.initialState,
     onEvent,
   };

@@ -33,6 +33,7 @@ Versions of `react`, `react-dom`, and `@module-federation/enhanced` must match t
 | `appInsights` | no | shared singleton from `appInsights.ts` |
 | `themeOverrides` | no | omitted in v1 (deferred per REQUIREMENTS.md §10) |
 | `initialTheme` | no | resolved from `localStorage.theme-preference` and `prefers-color-scheme` |
+| `hideThemeToggle` | no | `true` — this app owns the header theme toggle, so the indexer's built-in toggle is suppressed |
 | `initialState` | no | parsed from URL on first mount: `{ documentSetId, folderId, documentId }` |
 | `onEvent` | yes | dispatcher in `indexer-host/` that routes events to reducers |
 
