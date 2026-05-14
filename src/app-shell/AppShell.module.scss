@@ -1,7 +1,7 @@
 .shell {
   display: grid;
   grid-template-rows: auto 1fr;
-  min-height: 100dvh;
+  height: 100dvh;
   background: var(--bg-page);
   color: var(--text-primary);
 }
@@ -104,6 +104,7 @@
   display: block;
   position: relative;
   overflow: auto;
+  min-height: 0;
 }
 
 .skipLink {
