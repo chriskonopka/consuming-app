@@ -18,7 +18,7 @@
  * (clear the active collection rather than just the conversation).
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import type { ConversationHistoryResponse, LocalMessage } from '@shared/types';
@@ -88,7 +88,15 @@ export const useChatHistory = (
     if (isStaleDocset) onStaleDocset?.();
   }, [isStaleDocset, onStaleDocset]);
 
-  const messages = query.data?.messages.map(toLocalMessage) ?? [];
+  // Memoise so the returned array reference is stable across re-renders that
+  // don't change the cached history payload. MessageList's tail-scroll effect
+  // depends on `messages` identity; without this memo, every render of an
+  // ancestor (e.g. opening the viewer when a citation is clicked) would mint a
+  // new array and re-fire the scroll, snapping the chat to the bottom.
+  const messages = useMemo(
+    () => query.data?.messages.map(toLocalMessage) ?? [],
+    [query.data],
+  );
 
   return {
     messages,
