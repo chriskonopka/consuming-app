@@ -28,6 +28,18 @@ export const LAYOUT_STORAGE_KEY = 'consuming-app:layout' as const;
 /** localStorage key — the only sanctioned one per web-persistence.md. */
 export const THEME_PREFERENCE_KEY = 'theme-preference';
 
-/** Default panel widths — REQUIREMENTS.md §6.1 (no exact value specified; reasonable starting points). */
-export const DEFAULT_CHAT_PANEL_WIDTH_PX = 400;
-export const DEFAULT_VIEWER_PANEL_WIDTH_PX = 600;
+/**
+ * Initial panel width on first paint — 33% of the viewport. Each panel
+ * (chat and viewer) uses the same fraction; AppShell's clamp pins the
+ * result to the per-panel `[min, max]` range. Once the user drags either
+ * panel, the new pixel value is persisted to IndexedDB and supersedes
+ * this on subsequent loads, so the panel never resnaps on viewport
+ * resize. The fallback (used in jsdom/SSR where `window` is missing) is
+ * a reasonable mid-range pixel value that survives the same clamp.
+ */
+export const INITIAL_PANEL_WIDTH_FRACTION = 0.33;
+const INITIAL_PANEL_WIDTH_FALLBACK_PX = 400;
+export const computeInitialPanelWidthPx = (): number => {
+  if (typeof window === 'undefined') return INITIAL_PANEL_WIDTH_FALLBACK_PX;
+  return Math.round(window.innerWidth * INITIAL_PANEL_WIDTH_FRACTION);
+};
