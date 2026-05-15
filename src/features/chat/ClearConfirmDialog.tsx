@@ -7,6 +7,8 @@
 
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+
 import styles from './ClearConfirmDialog.module.scss';
 
 interface Props {
@@ -67,7 +69,14 @@ export const ClearConfirmDialog = ({ open, onConfirm, onCancel, pending }: Props
             disabled={pending}
             className={styles.confirm}
           >
-            {pending ? 'Clearing…' : 'Clear'}
+            {pending ? (
+              <span className={styles.pending}>
+                <LoadingSpinner ariaLabel="Clearing conversation" size="small" />
+                Clearing…
+              </span>
+            ) : (
+              'Clear'
+            )}
           </button>
         </div>
       </div>

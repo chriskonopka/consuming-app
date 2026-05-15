@@ -82,3 +82,13 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+// Spinner + label sit inline inside the confirm button while the DELETE is in
+// flight. Reserve space so the button doesn't reflow when the text swaps from
+// "Clear" → "Clearing…".
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
