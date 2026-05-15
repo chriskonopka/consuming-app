@@ -18,7 +18,7 @@
 import { ChatCircleText } from '@phosphor-icons/react';
 import { useCallback } from 'react';
 
-import { DEFAULT_CHAT_PANEL_WIDTH_PX, DEFAULT_VIEWER_PANEL_WIDTH_PX } from '@shared/types';
+import { computeInitialPanelWidthPx } from '@shared/types';
 
 import { useTrackPageView } from '../telemetry/useTrackPageView';
 
@@ -98,9 +98,12 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
     [layoutDispatch],
   );
 
-  const chatWidthPx = clampChatWidth(layoutState.chatPanel.widthPx || DEFAULT_CHAT_PANEL_WIDTH_PX);
+  // Persisted widthPx wins; the `|| computeInitialPanelWidthPx()` fallback
+  // only fires if persistence returned 0 (e.g. corrupted IndexedDB row) so
+  // the panel still opens at a sensible width rather than collapsing.
+  const chatWidthPx = clampChatWidth(layoutState.chatPanel.widthPx || computeInitialPanelWidthPx());
   const viewerWidthPx = clampViewerWidth(
-    layoutState.viewerPanel.widthPx || DEFAULT_VIEWER_PANEL_WIDTH_PX,
+    layoutState.viewerPanel.widthPx || computeInitialPanelWidthPx(),
   );
 
   const viewerOpen = viewer.state.open !== null;

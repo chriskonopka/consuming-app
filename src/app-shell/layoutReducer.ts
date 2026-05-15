@@ -8,10 +8,7 @@
  */
 
 import type { LayoutState, PanelState } from '@shared/types';
-import {
-  DEFAULT_CHAT_PANEL_WIDTH_PX,
-  DEFAULT_VIEWER_PANEL_WIDTH_PX,
-} from '@shared/types';
+import { computeInitialPanelWidthPx } from '@shared/types';
 
 export type LayoutAction =
   | { type: 'TOGGLE_CHAT_PANEL' }
@@ -21,9 +18,12 @@ export type LayoutAction =
   | { type: 'CLOSE_VIEWER_PANEL' }
   | { type: 'SET_VIEWER_PANEL_WIDTH'; widthPx: number };
 
+// Initial widths derived from viewport at module load — see
+// `computeInitialPanelWidthPx` jsdoc. AppShell's clamp pins each panel's
+// fraction-derived value to its own [min, max] range.
 export const INITIAL_LAYOUT_STATE: LayoutState = {
-  chatPanel: { open: false, widthPx: DEFAULT_CHAT_PANEL_WIDTH_PX },
-  viewerPanel: { open: false, widthPx: DEFAULT_VIEWER_PANEL_WIDTH_PX },
+  chatPanel: { open: false, widthPx: computeInitialPanelWidthPx() },
+  viewerPanel: { open: false, widthPx: computeInitialPanelWidthPx() },
   theme: 'light',
 };
 
