@@ -30,4 +30,4 @@ export const THEME_PREFERENCE_KEY = 'theme-preference';
 
 /** Default panel widths — REQUIREMENTS.md §6.1 (no exact value specified; reasonable starting points). */
 export const DEFAULT_CHAT_PANEL_WIDTH_PX = 400;
-export const DEFAULT_VIEWER_PANEL_WIDTH_PX = 600;
+export const DEFAULT_VIEWER_PANEL_WIDTH_PX = 720;

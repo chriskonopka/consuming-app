@@ -411,6 +411,22 @@ test.describe('Slice 4 — citations + PDF viewer', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
   });
+
+  test('resize separator is hittable (non-zero height) so the panel can be widened', async ({
+    page,
+  }) => {
+    // Regression: the .resizeEdge wrapper was missing `display: flex`, so the
+    // Splitter inside (which relies on `align-self: stretch`) collapsed to
+    // height 0. The wrapper still showed the resize cursor, but pointerdown
+    // never reached the Splitter and the panel was un-draggable.
+    await page.getByRole('button', { name: 'Open stub document' }).click();
+    await expect(page.getByRole('dialog', { name: 'Document viewer' })).toBeVisible();
+    const separator = page.getByRole('separator', { name: 'Resize document viewer' });
+    const box = await separator.boundingBox();
+    expect(box, 'separator must be rendered').not.toBeNull();
+    expect(box!.height).toBeGreaterThan(50);
+    expect(box!.width).toBeGreaterThan(0);
+  });
 });
 
 test.describe('Accessibility', () => {
