@@ -59,9 +59,18 @@
   inset: 0;
   z-index: 2;
   overflow: hidden;
-  // pdf.js styles its text-layer descendants inline; we don't override them.
+  // pdf.js writes position/left/top/font-size inline on each span but
+  // never sets color, so without an override the spans inherit the
+  // surrounding text color and render a second visible copy of the
+  // page on top of the canvas (Windows-only on some setups; Pat
+  // diagnosed this 2026-05-15). Force the spans transparent so the
+  // text layer stays selectable/searchable but visually invisible.
   pointer-events: none;
-  opacity: 0.2;
+
+  :global(span),
+  :global(br) {
+    color: transparent;
+  }
 }
 
 .highlightLayer {
