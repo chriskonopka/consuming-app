@@ -59,7 +59,7 @@ describe('AppShell', () => {
     await renderShell();
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.getAllByText('Bayer').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Apple').length).toBeGreaterThan(0);
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /skip to main/i })).toBeInTheDocument();
     expect(

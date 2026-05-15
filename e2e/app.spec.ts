@@ -18,7 +18,7 @@ test.describe('Slice 1 — sign-in, themed shell, persistence, sign-out', () => 
 
   test('renders the branded sign-in screen for unauthenticated users', async ({ page }) => {
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Bayer' }),
+      page.getByRole('heading', { level: 1, name: 'Apple' }),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
   });

@@ -30,7 +30,7 @@ export const AuthGate = ({ children }: Props) => {
     <main className={styles.gate} aria-labelledby="signin-title">
       <div className={styles.card}>
         <h1 id="signin-title" className={styles.title}>
-          Bayer
+          Apple
         </h1>
         <p className={styles.subtitle}>
           Sign in with your work account to browse collections and ask questions.

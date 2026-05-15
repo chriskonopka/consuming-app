@@ -122,7 +122,7 @@ const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
       </a>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <h1 className={styles.brand}>Bayer</h1>
+          <h1 className={styles.brand}>Apple</h1>
           <div className={styles.actions}>
             <button
               type="button"
