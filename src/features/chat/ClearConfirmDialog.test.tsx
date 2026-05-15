@@ -54,12 +54,16 @@ describe('ClearConfirmDialog', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('disables both buttons while pending and shows Clearing label', () => {
+  it('disables both buttons while pending and surfaces a spinner + Clearing label', () => {
     render(
       <ClearConfirmDialog open pending onConfirm={() => undefined} onCancel={() => undefined} />,
     );
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Clearing…' })).toBeDisabled();
+    // The button's accessible name now composes the spinner's aria-label with
+    // the visible "Clearing…" copy — regex matches without coupling to the
+    // exact concatenation order.
+    expect(screen.getByRole('button', { name: /Clearing…/ })).toBeDisabled();
+    expect(screen.getByRole('status', { name: 'Clearing conversation' })).toBeInTheDocument();
   });
 
   it('passes axe', async () => {
@@ -70,6 +74,13 @@ describe('ClearConfirmDialog', () => {
         onCancel={() => undefined}
         pending={false}
       />,
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('passes axe while pending (spinner inside the disabled confirm button)', async () => {
+    const { container } = render(
+      <ClearConfirmDialog open pending onConfirm={() => undefined} onCancel={() => undefined} />,
     );
     expect(await axe(container)).toHaveNoViolations();
   });
