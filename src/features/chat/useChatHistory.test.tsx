@@ -129,6 +129,50 @@ describe('useChatHistory stale-ref self-heal', () => {
     expect(onStaleConversation).not.toHaveBeenCalled();
   });
 
+  it('returns a referentially stable messages array across re-renders when the cached payload is unchanged', async () => {
+    // Guards against MessageList's tail-scroll effect re-firing on every
+    // ancestor render — clicking a citation must not snap the chat to the
+    // bottom because the viewer reducer happens to re-render the subtree.
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          conversationId: 'conv-1',
+          totalMessages: 1,
+          messages: [
+            {
+              id: 'm1',
+              role: 'user',
+              content: 'hi',
+              timestamp: '',
+              llmProvider: null,
+              citations: null,
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    // Stable QueryClient across rerenders — the default `wrap` helper mints a
+    // fresh client per call, which would flush the cache and defeat the test.
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const stableWrapper = ({ children }: { children: ReactNode }) => (
+      <MsalAppProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </MsalAppProvider>
+    );
+
+    const { result, rerender } = renderHook(() => useChatHistory('col-1', 'conv-1'), {
+      wrapper: stableWrapper,
+    });
+
+    await waitFor(() => expect(result.current.messages.length).toBe(1));
+    const first = result.current.messages;
+    rerender();
+    rerender();
+    expect(result.current.messages).toBe(first);
+  });
+
   it('fires onStaleDocset once on 403 and suppresses the public error', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
