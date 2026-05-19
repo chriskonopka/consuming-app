@@ -200,6 +200,31 @@ Object.defineProperty(window, 'matchMedia', {
 // for a correct structured-clone implementation in the test environment.
 global.structuredClone = <T>(value: T): T => deserialize(serialize(value)) as T;
 
+// jsdom does not expose URL.createObjectURL / revokeObjectURL. The viewer's
+// image renderer (slice 5) relies on object URLs to feed authenticated image
+// bytes into an `<img src=…>`. Provide a minimal counter-based shim so
+// component tests don't need to reimplement these per-file. Tests that need
+// to assert on the calls override these with `jest.spyOn(URL, 'createObjectURL')`.
+if (typeof URL.createObjectURL === 'undefined') {
+  let counter = 0;
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    writable: true,
+    value: (blob: Blob | MediaSource) => {
+      counter += 1;
+      const size = blob instanceof Blob ? blob.size : 0;
+      return `blob:jsdom-shim/${counter}-${size}`;
+    },
+  });
+}
+if (typeof URL.revokeObjectURL === 'undefined') {
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    writable: true,
+    value: () => undefined,
+  });
+}
+
 // jsdom does not implement IndexedDB. Replace it with fake-indexeddb before
 // each test and reset it to a fresh instance so tests are fully isolated.
 beforeEach(() => {

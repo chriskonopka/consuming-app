@@ -13,7 +13,6 @@
  */
 
 import { useEffect } from 'react';
-import type { PageViewport } from 'pdfjs-dist';
 
 import type { CitationRect } from '@shared/types';
 import { driftGuard } from '@shared/types';
@@ -23,9 +22,21 @@ import type { Dispatch } from 'react';
 
 import styles from './HighlightOverlay.module.scss';
 
+/**
+ * Geometry input to the overlay — a viewport-shaped subset of pdf.js's
+ * `PageViewport`. Image rendering (slice 5) supplies a synthetic instance with
+ * `scale: 1` and the displayed image dimensions because image citation
+ * coordinates are already in pixels (REQUIREMENTS.md §5.5).
+ */
+export interface OverlayViewport {
+  scale: number;
+  width: number;
+  height: number;
+}
+
 interface Props {
   highlight: CitationRect | null;
-  viewport: PageViewport | null;
+  viewport: OverlayViewport | null;
   /** Reducer dispatch — used so the orchestrator can react to drift-guard verdicts. */
   dispatch: Dispatch<ViewerAction>;
 }

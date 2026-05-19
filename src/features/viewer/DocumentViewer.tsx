@@ -1,24 +1,31 @@
 /**
- * Right-side panel that renders PDFs (slice 4) and images (slice 5).
+ * Right-side panel that renders documents in two modes (REQUIREMENTS.md §5.5):
+ *   - PDF   → pdf.js (canvas + text layer + highlight overlay) — slice 4
+ *   - Image → `<img>` blob-URL + reused highlight overlay — slice 5
  *
- * Reads `useViewer()` for the open document + page + highlight, then:
- *   - Loads metadata via TanStack Query (header strip).
- *   - Loads the PDF body via `useApiClient.raw()` and feeds it to pdf.js.
- *   - Renders the canvas + text layer + highlight overlay (three-layer per
- *     REQUIREMENTS.md §5.4).
- *   - Honours the drift-guard verdict — `<HighlightOverlay>` reports back
- *     via the shared reducer; we surface the "Couldn't locate" banner here.
- *   - Wires PageUp/PageDown to the panel's keydown.
+ * The strategy is chosen from `metadata.contentType` via `renderStrategyFor`.
+ * Non-PDF, non-image formats (docx, xlsx, html, txt, md, rtf) are served by
+ * the API as on-the-fly PDF conversions, so they hit the PDF path here. The
+ * `unsupported` branch is defensive — any unexpected content type routes
+ * through the PDF path and pdf.js's error banner surfaces parse failures.
+ *
+ * Reads `useViewer()` for the open document + page + highlight, then routes
+ * to the appropriate renderer once metadata resolves. The header, page-nav
+ * footer (PDF only), banner stack, and splitter all live here so each
+ * renderer can stay focused on its medium.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
+
+import { renderStrategyFor } from '@shared/types';
 
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { Panel } from '../../components/Panel';
 import { Splitter } from '../../components/Splitter';
 
 import { HighlightOverlay } from './HighlightOverlay';
+import { ImageRenderer } from './ImageRenderer';
 import { PageNavigation } from './PageNavigation';
 import { ViewerHeader } from './ViewerHeader';
 import { useDocumentMetadata } from './useDocumentMetadata';
@@ -56,7 +63,18 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
   const highlight = openDoc?.highlight ?? null;
 
   const metadata = useDocumentMetadata(documentId);
-  const pdf = usePdfDocument(documentId);
+  // Strategy is `null` until metadata resolves — we don't speculatively fetch
+  // content because the metadata response is already on the wire and a
+  // wrong-format fetch (e.g. pulling an image's bytes into pdf.js) would
+  // cause unnecessary work + a misleading error banner.
+  const strategy = metadata.data ? renderStrategyFor(metadata.data.contentType) : null;
+  const isImage = strategy === 'image';
+  // 'unsupported' falls through to PDF — the API converts Office / text /
+  // HTML to PDF on the fly, so a real document only lands here if the server
+  // returned an unexpected content-type. pdf.js's error banner handles it.
+  const isPdf = strategy === 'pdf' || strategy === 'unsupported';
+
+  const pdf = usePdfDocument(isPdf ? documentId : null);
 
   // Update totalPages once the PDF loads — keep the reducer's view of the
   // document in sync with pdf.js's authoritative count.
@@ -76,7 +94,7 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
   );
 
   const { viewport } = usePdfPage({
-    pdf: pdf.pdf,
+    pdf: isPdf ? pdf.pdf : null,
     page,
     fitToWidthPx,
     canvasRef,
@@ -104,6 +122,9 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
+      // PageUp/Down only makes sense for the multi-page PDF path. Images are
+      // single-frame and `totalPages` stays at 1.
+      if (!isPdf) return;
       if (event.key === 'PageDown' && page < totalPages) {
         event.preventDefault();
         setPage(page + 1);
@@ -112,7 +133,7 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
         setPage(page - 1);
       }
     },
-    [page, totalPages, setPage],
+    [page, totalPages, setPage, isPdf],
   );
 
   const renderingBanner =
@@ -129,7 +150,7 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
   ) : null;
 
   const errorBanner =
-    pdf.status === 'error' || pageRenderState === 'error' ? (
+    (isPdf && pdf.status === 'error') || pageRenderState === 'error' ? (
       <div className={styles.bannerError} role="alert">
         Could not load this document. Try closing and reopening it.
       </div>
@@ -137,13 +158,70 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
 
   // 404 self-heal: the document was deleted (admin action, tenant wipe, etc.)
   // Surface a clear notice in place of the canvas so the user understands the
-  // cited source is gone rather than seeing a generic load error.
+  // cited source is gone rather than seeing a generic load error. Only the
+  // PDF path exposes 'not-found' today; image fetch failures surface via the
+  // generic error banner.
   const notFoundBanner =
-    pdf.status === 'not-found' ? (
+    isPdf && pdf.status === 'not-found' ? (
       <div className={styles.bannerWarning} role="status" aria-live="polite">
         This document is no longer available — it may have been removed.
       </div>
     ) : null;
+
+  const renderBody = () => {
+    if (documentId === null) {
+      return (
+        <div className={styles.empty} role="status" aria-live="polite">
+          <p>No document open.</p>
+        </div>
+      );
+    }
+    if (metadata.isLoading || strategy === null) {
+      return (
+        <div className={styles.loading}>
+          <LoadingSpinner ariaLabel={`Loading ${documentId}`} />
+        </div>
+      );
+    }
+    if (isImage) {
+      return (
+        <ImageRenderer
+          documentId={documentId}
+          fileName={metadata.data?.fileName}
+          highlight={highlight}
+          dispatch={dispatch}
+        />
+      );
+    }
+    // PDF (and 'unsupported' defensive fallback).
+    if (pdf.status === 'not-found') {
+      return (
+        <div className={styles.empty} role="status" aria-live="polite">
+          <p>Document unavailable.</p>
+        </div>
+      );
+    }
+    if (pdf.status === 'loading') {
+      return (
+        <div className={styles.loading}>
+          <LoadingSpinner ariaLabel={`Loading ${documentId}`} />
+        </div>
+      );
+    }
+    return (
+      <div className={styles.pageStage}>
+        <div className={styles.pageWrap}>
+          <canvas ref={canvasRef} className={styles.canvas} />
+          <div ref={textLayerRef} className={styles.textLayer} aria-hidden="true" />
+          <div ref={highlightLayerRef} className={styles.highlightLayer}>
+            <HighlightOverlay highlight={highlight} viewport={viewport} dispatch={dispatch} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const showPageNav = isPdf;
 
   return (
     <Panel
@@ -167,44 +245,19 @@ export const DocumentViewer = ({ open, widthPx, onResize }: Props) => {
         {driftBanner}
         {errorBanner}
         {notFoundBanner}
-
-        {documentId === null ? (
-          <div className={styles.empty} role="status" aria-live="polite">
-            <p>No document open.</p>
-          </div>
-        ) : pdf.status === 'not-found' ? (
-          <div className={styles.empty} role="status" aria-live="polite">
-            <p>Document unavailable.</p>
-          </div>
-        ) : pdf.status === 'loading' ? (
-          <div className={styles.loading}>
-            <LoadingSpinner ariaLabel={`Loading ${documentId}`} />
-          </div>
-        ) : (
-          <div className={styles.pageStage}>
-            <div className={styles.pageWrap}>
-              <canvas ref={canvasRef} className={styles.canvas} />
-              <div ref={textLayerRef} className={styles.textLayer} aria-hidden="true" />
-              <div ref={highlightLayerRef} className={styles.highlightLayer}>
-                <HighlightOverlay
-                  highlight={highlight}
-                  viewport={viewport}
-                  dispatch={dispatch}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        {renderBody()}
       </div>
 
-      <footer className={styles.footer}>
-        <PageNavigation
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          disabled={pdf.status !== 'ready'}
-        />
-      </footer>
+      {showPageNav && (
+        <footer className={styles.footer}>
+          <PageNavigation
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={pdf.status !== 'ready'}
+          />
+        </footer>
+      )}
 
       {onResize && (
         <div className={styles.resizeEdge}>

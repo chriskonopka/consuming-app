@@ -321,4 +321,41 @@ describe('DocumentViewer', () => {
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
+
+  it('routes image content types to the image renderer and skips pdf.js', async () => {
+    apiGet.mockResolvedValue(
+      buildMetadata({
+        documentId: 'photo.png',
+        fileName: 'photo.png',
+        contentType: 'image/png',
+        fileType: 'Other',
+      }),
+    );
+    apiRaw.mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new Uint8Array([0]));
+              controller.close();
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'image/png' } },
+        ),
+      ),
+    );
+
+    pdfjsTesting.getDocument.mockClear();
+
+    render(
+      <Harness open documentId="photo.png">
+        <DocumentViewer open widthPx={600} />
+      </Harness>,
+    );
+
+    expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+    // pdf.js was never invoked for an image document — the metadata gate
+    // prevents the speculative fetch.
+    expect(pdfjsTesting.getDocument).not.toHaveBeenCalled();
+  });
 });

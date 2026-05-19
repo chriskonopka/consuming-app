@@ -74,3 +74,32 @@ export const driftGuard = (
   if (pageHeight <= 0) return 'reject';
   return rectHeight / pageHeight <= DRIFT_GUARD_MAX_PAGE_FRACTION ? 'render' : 'reject';
 };
+
+/**
+ * Render-strategy classification for the viewer (REQUIREMENTS.md §5.5).
+ *
+ *  - `pdf`         → pdf.js (canvas + text layer + highlight overlay)
+ *  - `image`       → `<img>` blob-URL pattern + image overlay
+ *  - `unsupported` → reserved. The API converts non-image, non-PDF formats
+ *                    (docx, xlsx, html, txt, md, rtf) to PDF on the fly, so
+ *                    real documents never hit this branch — DocumentViewer
+ *                    routes it through the PDF path defensively, and pdf.js
+ *                    error banners surface anything unexpected.
+ */
+export type ViewerRenderStrategy = 'pdf' | 'image' | 'unsupported';
+
+const PDF_CONTENT_TYPE = 'application/pdf';
+
+/**
+ * Return the render strategy for a server-supplied content type.
+ * Defensive about case + parameters (e.g. `image/png; charset=binary`).
+ */
+export const renderStrategyFor = (
+  contentType: string | null | undefined,
+): ViewerRenderStrategy => {
+  if (!contentType) return 'unsupported';
+  const normalized = contentType.split(';')[0].trim().toLowerCase();
+  if (normalized === PDF_CONTENT_TYPE) return 'pdf';
+  if (normalized.startsWith('image/')) return 'image';
+  return 'unsupported';
+};
