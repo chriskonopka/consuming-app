@@ -47,9 +47,62 @@ class CopyStaticWebAppConfigPlugin {
   }
 }
 
+/**
+ * Emits `version.json` to the build output. The JSON carries the bundle's
+ * build id (`{ buildId }`). The running client polls this file periodically
+ * and reloads when the live id no longer matches the id baked into its
+ * bundle — recovers users on a stale tab after a deploy without prompting.
+ *
+ * `staticwebapp.config.json` pairs with this by serving the file with
+ * `Cache-Control: no-store`. Without that, the CDN happily caches an old
+ * `version.json` and the running client never sees the update.
+ */
+class EmitVersionJsonPlugin {
+  constructor(buildId) {
+    this.buildId = buildId;
+  }
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('EmitVersionJsonPlugin', (compilation) => {
+      compilation.hooks.processAssets.tap(
+        {
+          name: 'EmitVersionJsonPlugin',
+          stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
+        },
+        () => {
+          const payload = JSON.stringify({ buildId: this.buildId }) + '\n';
+          compilation.emitAsset(
+            'version.json',
+            new compiler.webpack.sources.RawSource(payload),
+          );
+        },
+      );
+    });
+  }
+}
+
+/**
+ * Resolve the build identifier for the current bundle. Prefers an
+ * explicit `BUILD_ID` env var (set by CI or the deploy script), falls
+ * back to the current git short SHA, then to a timestamp. The same
+ * value is exposed to the runtime via `__BUILD_ID__` and written to
+ * `dist/version.json` so the two stay in sync.
+ */
+const resolveBuildId = () => {
+  if (process.env.BUILD_ID) return process.env.BUILD_ID;
+  try {
+    return require('child_process')
+      .execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return `dev-${Date.now()}`;
+  }
+};
+
 /** @param {Record<string, unknown>} _env @param {{ mode: string }} argv */
 module.exports = (_env, argv) => {
   const isProd = argv.mode === 'production';
+  const buildId = resolveBuildId();
 
   // Remote URL for the indexer. Empty in test/CI runs where the remote is not
   // served — the consuming app's E2E stub branch (MSAL_E2E_STUB) skips the
@@ -211,6 +264,11 @@ module.exports = (_env, argv) => {
         path.resolve(__dirname, 'staticwebapp.config.json'),
       ),
 
+      // Emit `dist/version.json` so the running client can detect a deploy
+      // and recover stale sessions without prompting. The same `buildId` is
+      // baked into the bundle below via `__BUILD_ID__`.
+      new EmitVersionJsonPlugin(buildId),
+
       // Expose environment variables to the browser bundle.
       // Only whitelisted variables are forwarded — never forward the entire process.env.
       // Secrets do NOT belong here — only public configuration. The MSAL clientId,
@@ -233,6 +291,10 @@ module.exports = (_env, argv) => {
         // empty string, which makes the gating expression false at compile
         // time and Terser eliminates the stub branch.
         'process.env.MSAL_E2E_STUB': JSON.stringify(process.env.MSAL_E2E_STUB || ''),
+        // Build identifier baked into the bundle. Paired with `dist/version.json`
+        // (same value) so the running client can poll for a deploy and reload
+        // stale sessions. See `src/utils/buildId.ts` for the runtime read.
+        __BUILD_ID__: JSON.stringify(buildId),
       }),
 
       // Runs TypeScript type-checking in a separate worker so it does not

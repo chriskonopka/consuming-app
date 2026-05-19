@@ -1,4 +1,12 @@
 {
+  "routes": [
+    {
+      "route": "/version.json",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [

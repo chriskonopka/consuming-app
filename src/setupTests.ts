@@ -200,6 +200,27 @@ Object.defineProperty(window, 'matchMedia', {
 // for a correct structured-clone implementation in the test environment.
 global.structuredClone = <T>(value: T): T => deserialize(serialize(value)) as T;
 
+// jsdom does not expose the PromiseRejectionEvent constructor. The
+// `staleBundleReloader` listens for it on `window`, and tests need to
+// dispatch synthetic instances. Provide a minimal Event-derived shim with
+// the same field shape (`reason`, `promise`).
+if (typeof PromiseRejectionEvent === 'undefined') {
+  class PromiseRejectionEventShim extends Event {
+    promise: Promise<unknown>;
+    reason: unknown;
+    constructor(
+      type: string,
+      init: { promise: Promise<unknown>; reason?: unknown },
+    ) {
+      super(type, { cancelable: true });
+      this.promise = init.promise;
+      this.reason = init.reason;
+    }
+  }
+  (global as unknown as { PromiseRejectionEvent: typeof PromiseRejectionEvent }).PromiseRejectionEvent =
+    PromiseRejectionEventShim as unknown as typeof PromiseRejectionEvent;
+}
+
 // jsdom does not expose URL.createObjectURL / revokeObjectURL. The viewer's
 // image renderer (slice 5) relies on object URLs to feed authenticated image
 // bytes into an `<img src=…>`. Provide a minimal counter-based shim so
