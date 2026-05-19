@@ -20,8 +20,14 @@ import { AppShell } from './app-shell';
 import { AuthGate, MsalAppProvider } from './auth';
 import { HealthPage } from './health';
 import { ThemeProvider } from './theme';
+import { installStaleBundleReloader } from './utils/staleBundleReloader';
 
 import './styles/global.css';
+
+// Install before any React.lazy / federated import can fail. Recovers users
+// whose tab is running a stale bundle after a deploy invalidated their
+// chunks — see staleBundleReloader.ts for the matchers.
+installStaleBundleReloader();
 
 const queryClient = new QueryClient({
   defaultOptions: {

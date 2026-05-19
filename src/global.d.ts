@@ -49,3 +49,8 @@ declare namespace NodeJS {
     MSAL_API_SCOPE: string;
   }
 }
+
+// Build identifier baked into the bundle by webpack.DefinePlugin. Same value
+// is emitted to `dist/version.json` so the running client can poll and reload
+// when the live id no longer matches. Read via `src/utils/buildId.ts`.
+declare const __BUILD_ID__: string;

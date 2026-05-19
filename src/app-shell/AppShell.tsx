@@ -34,6 +34,7 @@ import {
   useViewer,
 } from '../features/viewer';
 import { UserMenu, useAuth } from '../auth';
+import { useReloadOnNewVersion } from '../hooks/useReloadOnNewVersion';
 import { useTheme } from '../theme';
 
 import styles from './AppShell.module.scss';
@@ -74,6 +75,12 @@ interface AppShellInnerProps {
  */
 const AppShellInner = ({ layoutState, layoutDispatch }: AppShellInnerProps) => {
   useTrackPageView();
+  // Polls `/version.json` while the tab is visible and reloads when the tab
+  // becomes hidden after a new build is detected. Users on a stale bundle
+  // come back to a fresh one without seeing a prompt; emergency stale-chunk
+  // reloader (installed in bootstrap.tsx) covers the case where they don't
+  // tab away before triggering a missing chunk.
+  useReloadOnNewVersion();
   const { state: authState } = useAuth();
   const viewer = useViewer();
 
