@@ -1,26 +1,27 @@
 /**
  * Source list shown beneath each completed assistant message.
  *
- * One row per citation, ordered ascending by `marker`, so the panel
- * order matches the inline `[N]` markers in the answer text. Each row
- * is independently clickable to the same viewer target the inline
- * marker uses — keyed by `documentId` (never `fileName`, which is
- * display-only and can collide across DocumentSets).
+ * One row per (document, page): every line-level citation that lands on the same
+ * page of the same document collapses into a single row. A heavily-cited page
+ * (e.g. 20 cited lines on page 1 of a scanned form) would otherwise fill the
+ * panel with rows that look identical — same file, same page — and read as
+ * duplicates. Collapsing by page removes that noise; a row carries a passage
+ * count when it stands for more than one citation.
  *
- * Earlier versions grouped citations by `fileName` with deduped pages,
- * which created a misleading impression that marker `[N]` mapped to
- * the Nth page in the first group. The new layout is a flat list with
- * the `[N]` chip alongside the file name + page, so the relationship
- * between an inline marker and its panel row is unambiguous.
+ * Precision is not lost: the inline [N] badges in the answer text stay 1:1 with
+ * citations, each opening its exact line. This panel is a deduped index of where
+ * the answer drew from. Clicking a row opens the viewer at that page's first
+ * cited line (the group representative).
  *
- * Markers are unique per response (the API's `CitationMarkerDetector`
- * dedupes server-side), so there's no client-side dedup here.
+ * Identity is keyed by documentId, never fileName (display-only — it can collide
+ * across DocumentSets and be renamed); see `groupCitationsByPage`.
  */
 
 import { useMemo, useState } from 'react';
 import { CaretDown, CaretRight } from '@phosphor-icons/react';
 
 import type { Citation } from '@shared/types';
+import { groupCitationsByPage } from '@shared/types';
 
 import styles from './SourceList.module.scss';
 
@@ -32,18 +33,18 @@ interface Props {
 export const SourceList = ({ citations, onOpen }: Props) => {
   const [expanded, setExpanded] = useState(false);
 
-  // Sort by marker so the row order matches the order the markers appear
-  // in the answer text. The server emits markers sequentially per response,
-  // so this is normally already in order — sort defensively in case a
-  // future API change emits them out of order.
-  const ordered = useMemo(
-    () => [...citations].sort((markerA, markerB) => markerA.marker - markerB.marker),
-    [citations],
-  );
+  // Sort by marker first so groups appear in the order their first marker shows
+  // up in the answer text, then collapse to one row per (document, page). The
+  // server emits markers sequentially per response, so the sort is normally a
+  // no-op — sort defensively in case a future API change emits them out of order.
+  const groups = useMemo(() => {
+    const ordered = [...citations].sort((markerA, markerB) => markerA.marker - markerB.marker);
+    return groupCitationsByPage(ordered);
+  }, [citations]);
 
-  if (ordered.length === 0) return null;
+  if (groups.length === 0) return null;
 
-  const total = ordered.length;
+  const total = groups.length;
   const label = `${total} ${total === 1 ? 'source' : 'sources'}`;
 
   return (
@@ -63,26 +64,31 @@ export const SourceList = ({ citations, onOpen }: Props) => {
       </button>
       {expanded && (
         <ul className={styles.list} aria-label="Cited sources">
-          {ordered.map((citation) => (
-            <li key={citation.marker} className={styles.item}>
-              <button
-                type="button"
-                className={styles.source}
-                onClick={() => onOpen(citation)}
-                aria-label={`Citation ${citation.marker} — ${citation.fileName}, page ${citation.page}`}
-              >
-                <span className={styles.marker} aria-hidden="true">
-                  [{citation.marker}]
-                </span>
-                <span className={styles.fileName} title={citation.fileName}>
-                  {citation.fileName}
-                </span>
-                <span className={styles.page} aria-hidden="true">
-                  p{citation.page}
-                </span>
-              </button>
-            </li>
-          ))}
+          {groups.map((group) => {
+            const passages = group.count > 1 ? `, ${group.count} cited passages` : '';
+            return (
+              <li key={group.key} className={styles.item}>
+                <button
+                  type="button"
+                  className={styles.source}
+                  onClick={() => onOpen(group.representative)}
+                  aria-label={`${group.fileName}, page ${group.page}${passages}`}
+                >
+                  <span className={styles.fileName} title={group.fileName}>
+                    {group.fileName}
+                  </span>
+                  <span className={styles.page} aria-hidden="true">
+                    p{group.page}
+                  </span>
+                  {group.count > 1 && (
+                    <span className={styles.count} aria-hidden="true">
+                      ({group.count})
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
