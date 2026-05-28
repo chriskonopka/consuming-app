@@ -75,10 +75,62 @@
   flex-shrink: 0;
 }
 
-// Passage count for a page cited on more than one line. Tertiary emphasis —
-// it explains the density (e.g. "(20)" cited passages), it is not a marker.
+// Passage count on a document header — how many passages were cited in that
+// document. Tertiary emphasis; it is a count, not a marker.
 .count {
   font-size: 0.75rem;
   color: var(--text-tertiary, var(--text-secondary));
   flex-shrink: 0;
+}
+
+// Nested list of passages revealed when a document row is expanded. Indented
+// under the document header so the hierarchy reads at a glance.
+.passageList {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.passageItem {
+  display: block;
+}
+
+.passage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.passage:hover,
+.passage:focus-visible {
+  background: color-mix(in srgb, var(--accent-interactive) 8%, transparent);
+  border-color: var(--accent-interactive);
+  outline: none;
+}
+
+// Inline [N] chip mirroring the in-answer CitationMarker so a panel passage
+// reads as the same marker that appears in the answer text.
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  padding: 0 0.25rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-interactive);
+  background: color-mix(in srgb, var(--accent-interactive) 12%, transparent);
 }

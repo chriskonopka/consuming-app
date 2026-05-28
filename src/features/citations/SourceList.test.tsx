@@ -24,16 +24,15 @@ describe('SourceList', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the singular toggle label when there is exactly one citation', () => {
+  it('shows the singular toggle label when there is one cited document', () => {
     render(<SourceList citations={[buildCitation()]} onOpen={jest.fn()} />);
     expect(screen.getByRole('button', { name: 'View 1 source' })).toBeInTheDocument();
   });
 
-  it('collapses citations to one row per (document, page) — 4 citations on 3 distinct pages = 3 sources', async () => {
-    // Multiple line-level citations on the same page of the same document are
-    // different lines of one page, so the panel lists them as a single source
-    // (with a passage count), not as duplicate rows. The inline [N] badges keep
-    // per-line precision; the panel is a deduped index.
+  it('groups citations by document — 4 citations across 2 documents = 2 sources', async () => {
+    // The panel lists one entry per cited document (file name shown once) with a
+    // passage count, not one row per citation. Per-passage navigation is restored
+    // by expanding a document (see the expand test below).
     const user = userEvent.setup();
     render(
       <SourceList
@@ -46,54 +45,51 @@ describe('SourceList', () => {
         onOpen={jest.fn()}
       />,
     );
-    await user.click(screen.getByRole('button', { name: 'View 3 sources' }));
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
-    // The twice-cited page surfaces a passage count and announces it.
-    expect(screen.getByText('(2)')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'a.pdf, page 1, 2 cited passages' }),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'View 2 sources' }));
+    expect(screen.getByRole('button', { name: 'a.pdf, 3 passages' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'b.pdf, 1 passage' })).toBeInTheDocument();
+    // Each document header surfaces its passage count.
+    expect(screen.getByText('(3)')).toBeInTheDocument();
+    expect(screen.getByText('(1)')).toBeInTheDocument();
   });
 
-  it('orders source rows by the marker that first cites each (document, page), even when input is shuffled', async () => {
+  it('reveals a document’s passages as [N] links only after the document row is expanded', async () => {
     const user = userEvent.setup();
     render(
       <SourceList
         citations={[
-          buildCitation({ marker: 3, documentId: 'doc-c', fileName: 'c.pdf', page: 5 }),
           buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 1 }),
-          buildCitation({ marker: 2, documentId: 'doc-b', fileName: 'b.pdf', page: 4 }),
-        ]}
-        onOpen={jest.fn()}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'View 3 sources' }));
-    const rows = screen.getAllByRole('listitem');
-    expect(rows[0]).toHaveTextContent('a.pdf');
-    expect(rows[0]).toHaveTextContent('p1');
-    expect(rows[1]).toHaveTextContent('b.pdf');
-    expect(rows[1]).toHaveTextContent('p4');
-    expect(rows[2]).toHaveTextContent('c.pdf');
-    expect(rows[2]).toHaveTextContent('p5');
-  });
-
-  it('collapses multiple line citations on the same (document, page) into one row', async () => {
-    // The CIT-1 fix: two distinct citations on the same page of the same
-    // document (different bbox / different lines) are a single source row, not
-    // two rows that look like duplicates.
-    const user = userEvent.setup();
-    render(
-      <SourceList
-        citations={[
-          buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 7, y: 100 }),
-          buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 7, y: 400 }),
+          buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 3 }),
         ]}
         onOpen={jest.fn()}
       />,
     );
     await user.click(screen.getByRole('button', { name: 'View 1 source' }));
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
-    expect(screen.getByText('(2)')).toBeInTheDocument();
+    // Collapsed document: its passages are not in the DOM yet.
+    expect(screen.queryByRole('button', { name: /Open citation 1/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'a.pdf, 2 passages' }));
+    expect(screen.getByRole('button', { name: 'Open citation 1 on page 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open citation 2 on page 3' })).toBeInTheDocument();
+  });
+
+  it('opens the viewer at the exact citation when a passage link is clicked', async () => {
+    const user = userEvent.setup();
+    const onOpen = jest.fn();
+    const second = buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 9 });
+    render(
+      <SourceList
+        citations={[
+          buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 5 }),
+          second,
+        ]}
+        onOpen={onOpen}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'View 1 source' }));
+    await user.click(screen.getByRole('button', { name: 'a.pdf, 2 passages' }));
+    await user.click(screen.getByRole('button', { name: 'Open citation 2 on page 9' }));
+    expect(onOpen).toHaveBeenCalledWith(second);
   });
 
   it('keeps same-named documents apart when documentId differs (fileName is not the identity)', async () => {
@@ -110,7 +106,7 @@ describe('SourceList', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: 'View 2 sources' }));
-    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'dup.pdf, 1 passage' })).toHaveLength(2);
   });
 
   it('falls back to fileName for identity when documentId is null (legacy citations)', async () => {
@@ -119,60 +115,53 @@ describe('SourceList', () => {
       <SourceList
         citations={[
           buildCitation({ marker: 1, documentId: null, fileName: 'legacy.pdf', page: 1 }),
-          buildCitation({ marker: 2, documentId: null, fileName: 'legacy.pdf', page: 1 }),
+          buildCitation({ marker: 2, documentId: null, fileName: 'legacy.pdf', page: 2 }),
         ]}
         onOpen={jest.fn()}
       />,
     );
     await user.click(screen.getByRole('button', { name: 'View 1 source' }));
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
-    expect(screen.getByText('(2)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'legacy.pdf, 2 passages' })).toBeInTheDocument();
   });
 
-  it('opens the viewer at each page row independently', async () => {
+  it('orders documents and their passages by marker, even when input is shuffled', async () => {
     const user = userEvent.setup();
-    const onOpen = jest.fn();
-    const second = buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 9 });
     render(
       <SourceList
         citations={[
-          buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 5 }),
-          second,
+          buildCitation({ marker: 3, documentId: 'doc-b', fileName: 'b.pdf', page: 5 }),
+          buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 1 }),
+          buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 4 }),
         ]}
-        onOpen={onOpen}
+        onOpen={jest.fn()}
       />,
     );
     await user.click(screen.getByRole('button', { name: 'View 2 sources' }));
-    await user.click(screen.getByRole('button', { name: /a\.pdf, page 9/ }));
-    expect(onOpen).toHaveBeenCalledWith(second);
+    // doc-a (first cited at marker 1) precedes doc-b (first cited at marker 3).
+    const docRows = screen.getAllByRole('button', { name: /passages?$/ });
+    expect(docRows[0]).toHaveAccessibleName('a.pdf, 2 passages');
+    expect(docRows[1]).toHaveAccessibleName('b.pdf, 1 passage');
+    // Within doc-a, passages read in marker order.
+    await user.click(docRows[0]);
+    const passages = screen.getAllByRole('button', { name: /Open citation/ });
+    expect(passages[0]).toHaveAccessibleName('Open citation 1 on page 1');
+    expect(passages[1]).toHaveAccessibleName('Open citation 2 on page 4');
   });
 
-  it('opens a collapsed row at the lowest-marker citation on that page', async () => {
-    // When a page is cited on several lines, clicking the single row opens the
-    // viewer at the first (lowest-marker) citation — the group representative.
+  it('document row reports and toggles its expanded state via aria-expanded', async () => {
     const user = userEvent.setup();
-    const onOpen = jest.fn();
-    const first = buildCitation({
-      marker: 1,
-      documentId: 'doc-a',
-      fileName: 'a.pdf',
-      page: 4,
-      y: 100,
-    });
-    const later = buildCitation({
-      marker: 5,
-      documentId: 'doc-a',
-      fileName: 'a.pdf',
-      page: 4,
-      y: 500,
-    });
-    render(<SourceList citations={[later, first]} onOpen={onOpen} />);
+    render(<SourceList citations={[buildCitation({ fileName: 'a.pdf' })]} onOpen={jest.fn()} />);
     await user.click(screen.getByRole('button', { name: 'View 1 source' }));
-    await user.click(screen.getByRole('button', { name: /a\.pdf, page 4/ }));
-    expect(onOpen).toHaveBeenCalledWith(first);
+    const docRow = screen.getByRole('button', { name: 'a.pdf, 1 passage' });
+    expect(docRow).toHaveAttribute('aria-expanded', 'false');
+    await user.click(docRow);
+    expect(docRow).toHaveAttribute('aria-expanded', 'true');
+    // Collapsing again hides the passages.
+    await user.click(docRow);
+    expect(screen.queryByRole('button', { name: /Open citation/ })).not.toBeInTheDocument();
   });
 
-  it('toggle button reports its expanded state via aria-expanded', async () => {
+  it('top-level toggle reports its expanded state via aria-expanded', async () => {
     const user = userEvent.setup();
     render(<SourceList citations={[buildCitation()]} onOpen={jest.fn()} />);
     const toggle = screen.getByRole('button', { name: 'View 1 source' });
@@ -212,7 +201,7 @@ describe('SourceList', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('has no axe violations when expanded', async () => {
+  it('has no axe violations when the panel is expanded (documents collapsed)', async () => {
     const user = userEvent.setup();
     const { container } = render(
       <SourceList
@@ -224,6 +213,23 @@ describe('SourceList', () => {
       />,
     );
     await user.click(screen.getByRole('button', { name: 'View 2 sources' }));
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it('has no axe violations when a document is expanded to its passages', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <SourceList
+        citations={[
+          buildCitation({ marker: 1, documentId: 'doc-a', fileName: 'a.pdf', page: 1 }),
+          buildCitation({ marker: 2, documentId: 'doc-a', fileName: 'a.pdf', page: 3 }),
+        ]}
+        onOpen={jest.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'View 1 source' }));
+    await user.click(screen.getByRole('button', { name: 'a.pdf, 2 passages' }));
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
