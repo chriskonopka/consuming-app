@@ -59,23 +59,6 @@
   outline: none;
 }
 
-// Mirror the inline CitationMarker styling so the [N] chip in the row
-// is visually identical to the one inside the answer text — makes the
-// row<->marker correspondence obvious.
-.marker {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  min-width: 1.75rem;
-  padding: 0 0.25rem;
-  border-radius: var(--radius);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--accent-interactive);
-  background: color-mix(in srgb, var(--accent-interactive) 12%, transparent);
-}
-
 .fileName {
   font-weight: 500;
   color: var(--text-primary);
@@ -89,5 +72,13 @@
 .page {
   font-size: 0.8125rem;
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+// Passage count for a page cited on more than one line. Tertiary emphasis —
+// it explains the density (e.g. "(20)" cited passages), it is not a marker.
+.count {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, var(--text-secondary));
   flex-shrink: 0;
 }

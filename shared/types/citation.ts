@@ -5,7 +5,7 @@
  * This module:
  *   - Renders [N] markers from citations attached to a message
  *   - Audits citations for missing coordinates (drift guard runs in features/viewer)
- *   - Provides the source-list grouping/dedupe by fileName
+ *   - Groups citations into one source-list row per (document, page)
  */
 
 import type { CitationData } from './api-dtos';
@@ -35,31 +35,50 @@ export const auditCitation = (c: Citation): AuditedCitation => {
 };
 
 /**
- * Group citations by fileName for the source-list UI.
- * Each source lists the unique pages (sorted) where the file is cited.
+ * One entry per (document, page) for the source-list panel.
+ *
+ * Multiple line-level citations that land on the same page of the same document
+ * collapse into a single row. They paint different lines of one page, so listing
+ * each as its own "source" reads as duplicate noise (a scanned form page with 20
+ * cited lines would otherwise produce 20 near-identical rows). The inline [N]
+ * badges in the answer text stay 1:1 with citations and keep per-line precision —
+ * this panel is a deduped index of where the answer drew from, not a mirror of
+ * every marker.
+ *
+ * Identity is the documentId when present; fileName is display-only and can
+ * collide across DocumentSets or be renamed, so two same-named documents must
+ * not merge. Citations persisted before the documentId field existed
+ * (pre-2026-05-12) fall back to fileName. `representative` is the first citation
+ * seen for the group — callers sort by marker beforehand, so it is the
+ * lowest-numbered citation on that page and the viewer target on row click.
  */
-export interface SourceGroup {
+export interface SourcePageGroup {
+  /** Stable per-group identity: `${documentId ?? fileName}#${page}`. */
+  key: string;
   fileName: string;
-  pages: number[]; // sorted, deduped
-  firstCitation: Citation; // for click → open viewer at this page
+  page: number;
+  representative: Citation;
+  /** Number of distinct citations collapsed into this row (>= 1). */
+  count: number;
 }
 
-export const groupCitationsBySource = (citations: Citation[]): SourceGroup[] => {
-  const map = new Map<string, SourceGroup>();
+export const groupCitationsByPage = (citations: ReadonlyArray<Citation>): SourcePageGroup[] => {
+  const groups = new Map<string, SourcePageGroup>();
   for (const citation of citations) {
-    const existing = map.get(citation.fileName);
+    const identity = citation.documentId ?? citation.fileName;
+    const key = `${identity}#${citation.page}`;
+    const existing = groups.get(key);
     if (existing) {
-      if (!existing.pages.includes(citation.page)) {
-        existing.pages.push(citation.page);
-        existing.pages.sort((pageA, pageB) => pageA - pageB);
-      }
+      existing.count += 1;
     } else {
-      map.set(citation.fileName, {
+      groups.set(key, {
+        key,
         fileName: citation.fileName,
-        pages: [citation.page],
-        firstCitation: citation,
+        page: citation.page,
+        representative: citation,
+        count: 1,
       });
     }
   }
-  return [...map.values()];
+  return [...groups.values()];
 };
