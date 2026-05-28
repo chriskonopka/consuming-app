@@ -8,7 +8,7 @@ The barrel `index.ts` here is intentional — types are erased at compile time, 
 
 ## What does not belong here
 
-- Runtime values — only types and small pure helpers (e.g. `auditCitation`, `groupCitationsByPage`, `driftGuard`, `toLocalMessage`, `toCitationRect`, `V1_CHAT_LLM_PROVIDER`, persistence-key constants). These are pure and trivially tested.
+- Runtime values — only types and small pure helpers (e.g. `auditCitation`, `groupCitationsByDocument`, `driftGuard`, `toLocalMessage`, `toCitationRect`, `V1_CHAT_LLM_PROVIDER`, persistence-key constants). These are pure and trivially tested.
 - Anything specific to one module's internal state.
 - React component types — those go in the component files.
 

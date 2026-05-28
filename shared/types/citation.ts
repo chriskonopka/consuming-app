@@ -5,7 +5,7 @@
  * This module:
  *   - Renders [N] markers from citations attached to a message
  *   - Audits citations for missing coordinates (drift guard runs in features/viewer)
- *   - Groups citations into one source-list row per (document, page)
+ *   - Groups citations into one source-list entry per cited document
  */
 
 import type { CitationData } from './api-dtos';
@@ -35,48 +35,44 @@ export const auditCitation = (c: Citation): AuditedCitation => {
 };
 
 /**
- * One entry per (document, page) for the source-list panel.
+ * One entry per cited document for the source-list panel.
  *
- * Multiple line-level citations that land on the same page of the same document
- * collapse into a single row. They paint different lines of one page, so listing
- * each as its own "source" reads as duplicate noise (a scanned form page with 20
- * cited lines would otherwise produce 20 near-identical rows). The inline [N]
- * badges in the answer text stay 1:1 with citations and keep per-line precision —
- * this panel is a deduped index of where the answer drew from, not a mirror of
- * every marker.
+ * Every line-level citation in a document is grouped under a single header that
+ * shows the file name once. The panel reveals the individual passages as [N]
+ * links on expand, each opening the viewer at that citation's exact line — so a
+ * heavily-cited document (a scanned form cited on 20 lines) reads as one entry
+ * that opens up to its lines, not as 20 near-identical rows. The inline [N]
+ * badges in the answer text stay 1:1 with citations and keep per-line precision;
+ * this panel is the grouped index of where the answer drew from.
  *
  * Identity is the documentId when present; fileName is display-only and can
  * collide across DocumentSets or be renamed, so two same-named documents must
  * not merge. Citations persisted before the documentId field existed
- * (pre-2026-05-12) fall back to fileName. `representative` is the first citation
- * seen for the group — callers sort by marker beforehand, so it is the
- * lowest-numbered citation on that page and the viewer target on row click.
+ * (pre-2026-05-12) fall back to fileName. `citations` preserve input order —
+ * callers sort by marker beforehand, so they read in inline-marker order.
  */
-export interface SourcePageGroup {
-  /** Stable per-group identity: `${documentId ?? fileName}#${page}`. */
+export interface SourceDocumentGroup {
+  /** Stable per-document identity: `documentId ?? fileName`. */
   key: string;
   fileName: string;
-  page: number;
-  representative: Citation;
-  /** Number of distinct citations collapsed into this row (>= 1). */
-  count: number;
+  /** Every citation in this document, in caller-provided (marker) order. */
+  citations: Citation[];
 }
 
-export const groupCitationsByPage = (citations: ReadonlyArray<Citation>): SourcePageGroup[] => {
-  const groups = new Map<string, SourcePageGroup>();
+export const groupCitationsByDocument = (
+  citations: ReadonlyArray<Citation>,
+): SourceDocumentGroup[] => {
+  const groups = new Map<string, SourceDocumentGroup>();
   for (const citation of citations) {
     const identity = citation.documentId ?? citation.fileName;
-    const key = `${identity}#${citation.page}`;
-    const existing = groups.get(key);
+    const existing = groups.get(identity);
     if (existing) {
-      existing.count += 1;
+      existing.citations.push(citation);
     } else {
-      groups.set(key, {
-        key,
+      groups.set(identity, {
+        key: identity,
         fileName: citation.fileName,
-        page: citation.page,
-        representative: citation,
-        count: 1,
+        citations: [citation],
       });
     }
   }
